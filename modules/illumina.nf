@@ -19,8 +19,9 @@ process readTrimming {
 
     script:
     """
-    if [[ \$(gunzip -c ${forward} | head -n4 | wc -l) -eq 0 ]]; then
-      exit 0
+    if [[ ! -s ${forward} ]]; then
+      #exit 0
+      touch ${sampleName}_val_1.fq.gz ${sampleName}_val_2.fq.gz
     else
       trim_galore --paired $forward $reverse
     fi
@@ -69,8 +70,12 @@ process readMapping {
 
     script:
       """
-      bwa mem -t ${task.cpus} ${ref} ${forward} ${reverse} | \
-      samtools sort -o ${sampleName}.sorted.bam
+      if [[ ! -s ${forward} ]]; then
+        touch ${sampleName}.sorted.bam
+      else
+        bwa mem -t ${task.cpus} ${ref} ${forward} ${reverse} | \
+        samtools sort -o ${sampleName}.sorted.bam
+      fi
       """
 }
 
@@ -97,27 +102,35 @@ process trimPrimerSequences {
    
     if ( params.cleanBamHeader )
         """
-        samtools reheader --no-PG  -c 'sed "s/${sampleName}/sample/g"' ${bam} | \
-        samtools view -F4 -o sample.mapped.bam
+        if [[ ! -s ${bam} ]]; then
+          touch ${sampleName}.mapped.bam ${sampleName}.mapped.primertrimmed.sorted.bam
+        else
+          samtools reheader --no-PG  -c 'sed "s/${sampleName}/sample/g"' ${bam} | \
+          samtools view -F4 -o sample.mapped.bam
 
-        mv sample.mapped.bam ${sampleName}.mapped.bam
+          mv sample.mapped.bam ${sampleName}.mapped.bam
         
-        samtools index ${sampleName}.mapped.bam
+          samtools index ${sampleName}.mapped.bam
 
-        ${ivarCmd} -i ${sampleName}.mapped.bam -b ${bedfile} -m ${params.illuminaKeepLen} -q ${params.illuminaQualThreshold} -p ivar.out
+          ${ivarCmd} -i ${sampleName}.mapped.bam -b ${bedfile} -m ${params.illuminaKeepLen} -q ${params.illuminaQualThreshold} -p ivar.out
 
-        samtools reheader --no-PG  -c 'sed "s/${sampleName}/sample/g"' ivar.out.bam | \
-        samtools sort -o sample.mapped.primertrimmed.sorted.bam
+          samtools reheader --no-PG  -c 'sed "s/${sampleName}/sample/g"' ivar.out.bam | \
+          samtools sort -o sample.mapped.primertrimmed.sorted.bam
 
-        mv sample.mapped.primertrimmed.sorted.bam ${sampleName}.mapped.primertrimmed.sorted.bam
+          mv sample.mapped.primertrimmed.sorted.bam ${sampleName}.mapped.primertrimmed.sorted.bam
+        fi
         """
 
     else
         """
-        samtools view -F4 -o ${sampleName}.mapped.bam ${bam}
-        samtools index ${sampleName}.mapped.bam
-        ${ivarCmd} -i ${sampleName}.mapped.bam -b ${bedfile} -m ${params.illuminaKeepLen} -q ${params.illuminaQualThreshold} -p ivar.out
-        samtools sort -o ${sampleName}.mapped.primertrimmed.sorted.bam ivar.out.bam
+        if [[ ! -s ${bam} ]]; then
+          touch ${sampleName}.mapped.bam ${sampleName}.mapped.primertrimmed.sorted.bam
+        else
+          samtools view -F4 -o ${sampleName}.mapped.bam ${bam}
+          samtools index ${sampleName}.mapped.bam
+          ${ivarCmd} -i ${sampleName}.mapped.bam -b ${bedfile} -m ${params.illuminaKeepLen} -q ${params.illuminaQualThreshold} -p ivar.out
+          samtools sort -o ${sampleName}.mapped.primertrimmed.sorted.bam ivar.out.bam
+        fi
         """
 }
 
@@ -135,8 +148,12 @@ process callVariants {
 
     script:
         """
-        samtools mpileup -A -d 0 --reference ${ref} -B -Q 0 ${bam} |\
-        ivar variants -r ${ref} -m ${params.ivarMinDepth} -p ${sampleName}.variants -q ${params.ivarMinVariantQuality} -t ${params.ivarMinFreqThreshold}
+        if [[ ! -s ${bam} ]]; then
+          touch ${sampleName}.variants.tsv
+        else
+          samtools mpileup -A -d 0 --reference ${ref} -B -Q 0 ${bam} |\
+          ivar variants -r ${ref} -m ${params.ivarMinDepth} -p ${sampleName}.variants -q ${params.ivarMinVariantQuality} -t ${params.ivarMinFreqThreshold}
+        fi
         """
 }
 
@@ -147,16 +164,23 @@ process makeConsensus {
     publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "${sampleName}.primertrimmed.consensus.fa", mode: 'copy'
 
     input:
-        tuple(sampleName, path(bam))
+        tuple(sampleName, path(bam), path(ref))
 
     output:
         tuple(sampleName, path("${sampleName}.primertrimmed.consensus.fa"))
 
     script:
         """
-        samtools mpileup -aa -A -B -d ${params.mpileupDepth} -Q0 ${bam} | \
-        ivar consensus -t ${params.ivarFreqThreshold} -m ${params.ivarMinDepth} \
-        -n N -p ${sampleName}.primertrimmed.consensus
+        if [[ ! -s ${bam} ]]; then
+          echo ">${sampleName}" > ${sampleName}.primertrimmed.consensus.fa
+          seq \$(grep -v ">" ${ref} | tr -d '\n' | wc -m) | sed "c N" | tr -d '\n' | sed -e '\$a\\' >> ${sampleName}.primertrimmed.consensus.fa
+        else
+          samtools mpileup -aa -A -B -d ${params.mpileupDepth} -Q0 ${bam} | \
+          ivar consensus -t ${params.ivarFreqThreshold} -m ${params.ivarMinDepth} \
+          -n N -p ${sampleName}.primertrimmed.consensus
+        
+          sed -i "s/>.*/>${sampleName}/" ${sampleName}.primertrimmed.consensus.fa
+        fi
         """
 }
 
@@ -182,3 +206,95 @@ process cramToFastq {
         """
 }
 
+process reportAllConsensus {
+    /**
+    * Concatenate consensus of all samples
+    */
+
+    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "all_consensus.fasta", mode: 'copy'
+    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "all_trimcons.fasta", mode: 'copy'
+
+    input:
+        path("*.fa")
+
+    output:
+        path "all_consensus.fasta", emit: cons
+        path "all_trimcons.fasta", emit: trimcons
+
+    script:
+      """
+        cat *.fa > all_consensus.fasta
+        seqtk trimfq -b 150 -e 150 all_consensus.fasta > all_trimcons.fasta
+        awk 'BEGIN {n_seq=0;} /^>/ {if(n_seq%50==0){file=sprintf("consensus%d.fa",n_seq);} print >> file; n_seq++; next;} { print >> file; }' < all_consensus.fasta
+      """
+}
+
+process reportSampleCoverage {
+    /**
+    * Report coverage for each sample
+    */
+
+    tag { sampleName }
+
+    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "${sampleName}.cov", mode: 'copy'
+
+    input:
+        tuple(sampleName, path(bam), path(ref))
+
+    output:
+        path("${sampleName}.cov")
+
+    script:
+      """
+        if [[ ! -s ${bam} ]]; then
+          refName=\$(grep ">" ${ref})
+          refName="\${refName##>}"
+          length=\$(grep -v ">" ${ref} | tr -d '\n' | wc -m)
+          for i in \$(seq 1 \${length}); do echo -e "\${refName}\t\${i}\t0\t${sampleName}" >> ${sampleName}.cov; done;
+        else
+          samtools index ${bam}
+          bedtools genomecov -ibam ${bam} -d -split | sed "s/\$/\t${sampleName}/" > ${sampleName}.cov
+        fi
+      """
+}
+
+process reportAllCoverage {
+    /**
+    * Report coverage summary of the run
+    */
+
+    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "all_cov.cov", mode: 'copy'
+
+    input:
+        path("*.cov")
+
+    output:
+        path("all_cov.cov")
+
+    script:
+      """
+        cat *.cov > all_cov.cov
+      """
+}
+
+process makeSummary {
+    /**
+    * Make final summary of the run
+    */
+
+    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "summary.csv", mode: 'copy'
+
+    input:
+        tuple(path(consensus), path(trimcons), path(coverage))
+
+    output:
+        path("summary.csv")
+
+    script:
+      """
+        cp --remove-destination \$(readlink ${consensus}) ${consensus}
+        cp --remove-destination \$(readlink ${trimcons}) ${trimcons}
+        cp --remove-destination \$(readlink ${coverage}) ${coverage}
+        Rscript /srv/scratch/simonex02/ncov2019-artic-nf-master-210224/scripts/AI_analysis.R \$PWD/
+      """
+}

@@ -20,8 +20,11 @@ Stage: final
 
 %post
 apt-get update && \
-apt-get install -y git procps && \
+apt-get install -y git procps r-base=3.5.2-1 libxml2-dev libssl-dev curl libcurl4-openssl-dev && \
 apt-get clean -y
+R -e 'install.packages("devtools", repos="https://cloud.r-project.org")'
+R -e 'library(devtools); install_version("seqinr", version = "4.2-5", repos="https://cloud.r-project.org")'
+R -e 'library(devtools); install_version("stringr", version = "1.4.0", repos="https://cloud.r-project.org")'
 
 %files from condabuild
   /opt/conda/envs/artic-ncov2019-illumina /opt/conda/envs/artic-ncov2019-illumina

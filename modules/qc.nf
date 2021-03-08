@@ -18,7 +18,11 @@ process makeQCCSV {
     }
 
     """
-    qc.py ${qcSetting} --outfile ${params.prefix}.${sampleName}.qc.csv --sample ${sampleName} --ref ${ref} --bam ${bam} --fasta ${fasta}
+    if [[ ! -s ${bam} ]]; then
+      touch ${params.prefix}.${sampleName}.qc.csv ${sampleName}.depth.png
+    else
+      qc.py ${qcSetting} --outfile ${params.prefix}.${sampleName}.qc.csv --sample ${sampleName} --ref ${ref} --bam ${bam} --fasta ${fasta}
+    fi
     """
 }
 

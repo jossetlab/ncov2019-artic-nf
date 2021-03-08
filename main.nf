@@ -69,7 +69,6 @@ if ( ! params.prefix ) {
 } 
 
 
-
 // main workflow
 workflow {
    if ( params.illumina ) {

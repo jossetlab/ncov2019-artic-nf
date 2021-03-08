@@ -10,7 +10,11 @@ include {indexReference} from '../modules/illumina.nf'
 include {readMapping} from '../modules/illumina.nf' 
 include {trimPrimerSequences} from '../modules/illumina.nf' 
 include {callVariants} from '../modules/illumina.nf'
-include {makeConsensus} from '../modules/illumina.nf' 
+include {makeConsensus} from '../modules/illumina.nf'
+include {reportAllConsensus} from '../modules/illumina.nf'
+include {reportSampleCoverage} from '../modules/illumina.nf'
+include {reportAllCoverage} from '../modules/illumina.nf'
+include {makeSummary} from '../modules/illumina.nf'
 include {cramToFastq} from '../modules/illumina.nf'
 
 include {makeQCCSV} from '../modules/qc.nf'
@@ -96,7 +100,17 @@ workflow sequenceAnalysis {
 
       callVariants(trimPrimerSequences.out.ptrim.combine(ch_preparedRef.map{ it[0] })) 
 
-      makeConsensus(trimPrimerSequences.out.ptrim)
+      //makeConsensus(trimPrimerSequences.out.ptrim)
+
+      makeConsensus(trimPrimerSequences.out.ptrim.combine(ch_preparedRef.map{ it[0] }))
+
+      reportAllConsensus(makeConsensus.out.flatten().buffer( size:1, skip:1 ).collect())
+
+      reportSampleCoverage(trimPrimerSequences.out.ptrim.combine(ch_preparedRef.map{ it[0] }))
+
+      reportAllCoverage(reportSampleCoverage.out.collect())
+      
+      makeSummary(reportAllConsensus.out.cons.combine(reportAllConsensus.out.trimcons).combine(reportAllCoverage.out))
 
       makeQCCSV(trimPrimerSequences.out.ptrim.join(makeConsensus.out, by: 0)
                                    .combine(ch_preparedRef.map{ it[0] }))
@@ -107,9 +121,9 @@ workflow sequenceAnalysis {
                            header: it[-1] == 'qc_pass'
                            fail: it[-1] == 'FALSE'
                            pass: it[-1] == 'TRUE'
-    		       }
+                    }
                        .set { qc }
-
+/*
       writeQCSummaryCSV(qc.header.concat(qc.pass).concat(qc.fail).toList())
 
       collateSamples(qc.pass.map{ it[0] }
@@ -124,6 +138,10 @@ workflow sequenceAnalysis {
 
     emit:
       qc_pass = collateSamples.out
+      variants = callVariants.out.variants
+*/
+    emit:
+//      qc_pass = collateSamples.out
       variants = callVariants.out.variants
 }
 
@@ -149,7 +167,7 @@ workflow ncovIllumina {
           Genotyping(sequenceAnalysis.out.variants, ch_refGff, prepareReferenceFiles.out.reffasta, ch_typingYaml) 
 
       }
- 
+/*
       // Upload files to CLIMB
       if ( params.upload ) {
         
@@ -158,7 +176,7 @@ workflow ncovIllumina {
       
         CLIMBrsync(sequenceAnalysis.out.qc_pass, ch_CLIMBkey )
       }
-
+*/
 }
 
 workflow ncovIlluminaCram {
