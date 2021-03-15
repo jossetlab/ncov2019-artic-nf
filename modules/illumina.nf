@@ -295,6 +295,6 @@ process makeSummary {
         cp --remove-destination \$(readlink ${consensus}) ${consensus}
         cp --remove-destination \$(readlink ${trimcons}) ${trimcons}
         cp --remove-destination \$(readlink ${coverage}) ${coverage}
-        Rscript /srv/scratch/simonex02/ncov2019-artic-nf-master-210224/scripts/AI_analysis.R \$PWD/
+        Rscript scripts/AI_analysis.R \$PWD/
       """
 }
