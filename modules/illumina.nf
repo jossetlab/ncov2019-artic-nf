@@ -61,6 +61,7 @@ process readMapping {
     label 'largecpu'
 
     publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "${sampleName}.sorted.bam", mode: 'copy'
+    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "${sampleName}.sorted.bam.bai", mode: 'copy'
 
     input:
         tuple sampleName, path(forward), path(reverse), path(ref), path("*")
@@ -75,6 +76,7 @@ process readMapping {
       else
         bwa mem -t ${task.cpus} ${ref} ${forward} ${reverse} | \
         samtools sort -o ${sampleName}.sorted.bam
+        samtools index ${sampleName}.sorted.bam
       fi
       """
 }
