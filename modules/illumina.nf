@@ -86,12 +86,16 @@ process trimPrimerSequences {
     tag { sampleName }
 
     publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "${sampleName}.mapped.bam", mode: 'copy'
+    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "${sampleName}.mapped.bam.bai", mode: 'copy'
     publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "${sampleName}.mapped.primertrimmed.sorted.bam", mode: 'copy'
+    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "${sampleName}.mapped.primertrimmed.sorted.bam.bai", mode: 'copy'
 
     input:
     tuple sampleName, path(bam), path(bedfile)
 
     output:
+    path "${sampleName}.mapped.bam.bai"
+    path "${sampleName}.mapped.primertrimmed.sorted.bam.bai"
     tuple sampleName, path("${sampleName}.mapped.bam"), emit: mapped
     tuple sampleName, path("${sampleName}.mapped.primertrimmed.sorted.bam" ), emit: ptrim
 
@@ -105,7 +109,7 @@ process trimPrimerSequences {
     if ( params.cleanBamHeader )
         """
         if [[ ! -s ${bam} ]]; then
-          touch ${sampleName}.mapped.bam ${sampleName}.mapped.primertrimmed.sorted.bam
+          touch ${sampleName}.mapped.bam ${sampleName}.mapped.bam.bai ${sampleName}.mapped.primertrimmed.sorted.bam ${sampleName}.mapped.primertrimmed.sorted.bam.bai
         else
           samtools reheader --no-PG  -c 'sed "s/${sampleName}/sample/g"' ${bam} | \
           samtools view -F4 -o sample.mapped.bam
@@ -120,6 +124,7 @@ process trimPrimerSequences {
           samtools sort -o sample.mapped.primertrimmed.sorted.bam
 
           mv sample.mapped.primertrimmed.sorted.bam ${sampleName}.mapped.primertrimmed.sorted.bam
+          samtools index ${sampleName}.mapped.primertrimmed.sorted.bam
         fi
         """
 
@@ -132,6 +137,7 @@ process trimPrimerSequences {
           samtools index ${sampleName}.mapped.bam
           ${ivarCmd} -i ${sampleName}.mapped.bam -b ${bedfile} -m ${params.illuminaKeepLen} -q ${params.illuminaQualThreshold} -p ivar.out
           samtools sort -o ${sampleName}.mapped.primertrimmed.sorted.bam ivar.out.bam
+          samtools index ${sampleName}.mapped.primertrimmed.sorted.bam
         fi
         """
 }
@@ -297,6 +303,6 @@ process makeSummary {
         cp --remove-destination \$(readlink ${consensus}) ${consensus}
         cp --remove-destination \$(readlink ${trimcons}) ${trimcons}
         cp --remove-destination \$(readlink ${coverage}) ${coverage}
-        Rscript scripts/AI_analysis.R \$PWD/
+        Rscript ${params.scripts}/AI_analysis.R \$PWD/
       """
 }
