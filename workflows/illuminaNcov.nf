@@ -14,6 +14,7 @@ include {makeConsensus} from '../modules/illumina.nf'
 include {reportAllConsensus} from '../modules/illumina.nf'
 include {reportSampleCoverage} from '../modules/illumina.nf'
 include {reportAllCoverage} from '../modules/illumina.nf'
+include {reportAllCounts} from '../modules/illumina.nf'
 include {makeSummary} from '../modules/illumina.nf'
 include {cramToFastq} from '../modules/illumina.nf'
 
@@ -96,7 +97,7 @@ workflow sequenceAnalysis {
 
       readMapping(readTrimming.out.combine(ch_preparedRef))
 
-      trimPrimerSequences(readMapping.out.combine(ch_bedFile))
+      trimPrimerSequences(readMapping.out.bam.combine(ch_bedFile))
 
       callVariants(trimPrimerSequences.out.ptrim.combine(ch_preparedRef.map{ it[0] })) 
 
@@ -110,7 +111,9 @@ workflow sequenceAnalysis {
 
       reportAllCoverage(reportSampleCoverage.out.collect())
       
-      makeSummary(reportAllConsensus.out.cons.combine(reportAllConsensus.out.trimcons).combine(reportAllCoverage.out))
+      reportAllCounts(callVariants.out.count.collect())
+
+      makeSummary(reportAllConsensus.out.cons.combine(reportAllConsensus.out.trimcons).combine(reportAllCoverage.out).combine(reportAllCounts.out))
 
       makeQCCSV(trimPrimerSequences.out.ptrim.join(makeConsensus.out, by: 0)
                                    .combine(ch_preparedRef.map{ it[0] }))

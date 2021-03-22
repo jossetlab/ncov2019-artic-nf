@@ -67,12 +67,13 @@ process readMapping {
         tuple sampleName, path(forward), path(reverse), path(ref), path("*")
 
     output:
-        tuple(sampleName, path("${sampleName}.sorted.bam"))
+        tuple sampleName, path("${sampleName}.sorted.bam"), emit: bam
+        path "${sampleName}.sorted.bam.bai"
 
     script:
       """
       if [[ ! -s ${forward} ]]; then
-        touch ${sampleName}.sorted.bam
+        touch ${sampleName}.sorted.bam ${sampleName}.sorted.bam.bai
       else
         bwa mem -t ${task.cpus} ${ref} ${forward} ${reverse} | \
         samtools sort -o ${sampleName}.sorted.bam
@@ -147,20 +148,25 @@ process callVariants {
     tag { sampleName }
 
     publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "${sampleName}.variants.tsv", mode: 'copy'
+    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "${sampleName}.count.tsv", mode: 'copy'
 
     input:
     tuple(sampleName, path(bam), path(ref))
 
     output:
     tuple sampleName, path("${sampleName}.variants.tsv"), emit: variants
+    path "${sampleName}.count.tsv", emit: count
 
     script:
         """
         if [[ ! -s ${bam} ]]; then
-          touch ${sampleName}.variants.tsv
+          touch ${sampleName}.variants.tsv ${sampleName}.count.tsv
         else
           samtools mpileup -A -d 0 --reference ${ref} -B -Q 0 ${bam} |\
           ivar variants -r ${ref} -m ${params.ivarMinDepth} -p ${sampleName}.variants -q ${params.ivarMinVariantQuality} -t ${params.ivarMinFreqThreshold}
+          refName=\$(grep ">" ${ref} | tr -d ">")
+          echo -e "\${refName}\\t10-20%\\t\$(awk 'BEGIN {bp=0} \$11>=0.1 && \$11<0.2 {bp+=1} {print bp}' "${sampleName}.variants.tsv" | tail -1)\\t${sampleName}" > "${sampleName}.count.tsv"
+          echo -e "\${refName}\\t20-50%\\t\$(awk 'BEGIN {bp=0} \$11>=0.2 && \$11<0.5 {bp+=1} {print bp}' "${sampleName}.variants.tsv" | tail -1)\\t${sampleName}" >> "${sampleName}.count.tsv"
         fi
         """
 }
@@ -285,6 +291,25 @@ process reportAllCoverage {
       """
 }
 
+process reportAllCounts {
+    /**
+    * Report counts summary of the run
+    */
+
+    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "all_counts.tsv", mode: 'copy'
+
+    input:
+        path("*.tsv")
+
+    output:
+        path("all_counts.tsv")
+
+    script:
+      """
+        cat *.tsv > all_counts.tsv
+      """
+}
+
 process makeSummary {
     /**
     * Make final summary of the run
@@ -293,16 +318,13 @@ process makeSummary {
     publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "summary.csv", mode: 'copy'
 
     input:
-        tuple(path(consensus), path(trimcons), path(coverage))
+        tuple(path(consensus), path(trimcons), path(coverage), path(counts))
 
     output:
         path("summary.csv")
 
     script:
       """
-        cp --remove-destination \$(readlink ${consensus}) ${consensus}
-        cp --remove-destination \$(readlink ${trimcons}) ${trimcons}
-        cp --remove-destination \$(readlink ${coverage}) ${coverage}
         Rscript ${params.scripts}/AI_analysis.R \$PWD/
       """
 }
