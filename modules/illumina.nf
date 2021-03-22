@@ -131,7 +131,7 @@ process trimPrimerSequences {
     else
         """
         if [[ ! -s ${bam} ]]; then
-          touch ${sampleName}.mapped.bam ${sampleName}.mapped.primertrimmed.sorted.bam
+          touch ${sampleName}.mapped.bam ${sampleName}.mapped.bam.bai ${sampleName}.mapped.primertrimmed.sorted.bam ${sampleName}.mapped.primertrimmed.sorted.bam.bai
         else
           samtools view -F4 -o ${sampleName}.mapped.bam ${bam}
           samtools index ${sampleName}.mapped.bam
