@@ -62,22 +62,33 @@ process readMapping {
 
     publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "${sampleName}.sorted.bam", mode: 'copy'
     publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "${sampleName}.sorted.bam.bai", mode: 'copy'
+    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "posc/${sampleName}.tsv", mode: 'copy'
 
     input:
-        tuple sampleName, path(forward), path(reverse), path(ref), path("*")
+        tuple sampleName, path(forward), path(reverse), path(ref), path("*"), path(posc)
 
     output:
         tuple sampleName, path("${sampleName}.sorted.bam"), emit: bam
         path "${sampleName}.sorted.bam.bai"
+        path "posc/${sampleName}.tsv", emit: posc
 
     script:
       """
       if [[ ! -s ${forward} ]]; then
-        touch ${sampleName}.sorted.bam ${sampleName}.sorted.bam.bai
+        mkdir posc
+        touch ${sampleName}.sorted.bam ${sampleName}.sorted.bam.bai posc/${sampleName}.tsv
       else
         bwa mem -t ${task.cpus} ${ref} ${forward} ${reverse} | \
         samtools sort -o ${sampleName}.sorted.bam
         samtools index ${sampleName}.sorted.bam
+
+        mkdir posc
+        bwa index ${posc}
+        bwa mem -a -t ${task.cpus} ${posc} ${forward} ${reverse} | \
+        samtools sort -o ${sampleName}.posc.bam
+        samtools index ${sampleName}.posc.bam
+        bedtools genomecov -ibam "${sampleName}.posc.bam" -d > "${sampleName}.depth.tsv"
+        for ref in \$(cut -f 1 "${sampleName}.depth.tsv" | sort -u); do cov=\$(bc <<< "scale=3; (\$(awk -v ref=\$ref 'BEGIN {bp=0} \$1==ref && \$3>=10 {bp+=\$2} {print bp}' "${sampleName}.depth.tsv" | tail -1)/\$(awk -v ref=\$ref 'BEGIN {bp=0} \$1==ref {bp+=\$2} {print bp}' "${sampleName}.depth.tsv" | tail -1))"); echo -e "\${ref}\\t\${cov}" >> "posc/${sampleName}.tsv"; done;
       fi
       """
 }
@@ -88,6 +99,7 @@ process trimPrimerSequences {
 
     publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "${sampleName}.mapped.bam", mode: 'copy'
     publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "${sampleName}.mapped.bam.bai", mode: 'copy'
+    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "${sampleName}.txt", mode: 'copy'
     publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "${sampleName}.mapped.primertrimmed.sorted.bam", mode: 'copy'
     publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "${sampleName}.mapped.primertrimmed.sorted.bam.bai", mode: 'copy'
 
@@ -97,6 +109,7 @@ process trimPrimerSequences {
     output:
     path "${sampleName}.mapped.bam.bai"
     path "${sampleName}.mapped.primertrimmed.sorted.bam.bai"
+    path "${sampleName}.txt", emit: kmers
     tuple sampleName, path("${sampleName}.mapped.bam"), emit: mapped
     tuple sampleName, path("${sampleName}.mapped.primertrimmed.sorted.bam" ), emit: ptrim
 
@@ -110,7 +123,7 @@ process trimPrimerSequences {
     if ( params.cleanBamHeader )
         """
         if [[ ! -s ${bam} ]]; then
-          touch ${sampleName}.mapped.bam ${sampleName}.mapped.bam.bai ${sampleName}.mapped.primertrimmed.sorted.bam ${sampleName}.mapped.primertrimmed.sorted.bam.bai
+          touch ${sampleName}.mapped.bam ${sampleName}.mapped.bam.bai ${sampleName}.mapped.primertrimmed.sorted.bam ${sampleName}.mapped.primertrimmed.sorted.bam.bai ${sampleName}.txt
         else
           samtools reheader --no-PG  -c 'sed "s/${sampleName}/sample/g"' ${bam} | \
           samtools view -F4 -o sample.mapped.bam
@@ -118,6 +131,9 @@ process trimPrimerSequences {
           mv sample.mapped.bam ${sampleName}.mapped.bam
         
           samtools index ${sampleName}.mapped.bam
+
+          bedtools bamtofastq -i ${sampleName}.mapped.bam -fq ${sampleName}.fastq
+          kmercountexact.sh in=${sampleName}.fastq out=${sampleName}.txt mincount=20 k=31
 
           ${ivarCmd} -i ${sampleName}.mapped.bam -b ${bedfile} -m ${params.illuminaKeepLen} -q ${params.illuminaQualThreshold} -p ivar.out
 
@@ -132,10 +148,14 @@ process trimPrimerSequences {
     else
         """
         if [[ ! -s ${bam} ]]; then
-          touch ${sampleName}.mapped.bam ${sampleName}.mapped.bam.bai ${sampleName}.mapped.primertrimmed.sorted.bam ${sampleName}.mapped.primertrimmed.sorted.bam.bai
+          touch ${sampleName}.mapped.bam ${sampleName}.mapped.bam.bai ${sampleName}.mapped.primertrimmed.sorted.bam ${sampleName}.mapped.primertrimmed.sorted.bam.bai ${sampleName}.txt
         else
           samtools view -F4 -o ${sampleName}.mapped.bam ${bam}
           samtools index ${sampleName}.mapped.bam
+
+          bedtools bamtofastq -i ${sampleName}.mapped.bam -fq ${sampleName}.fastq
+          kmercountexact.sh in=${sampleName}.fastq out=${sampleName}.txt mincount=20 k=31
+
           ${ivarCmd} -i ${sampleName}.mapped.bam -b ${bedfile} -m ${params.illuminaKeepLen} -q ${params.illuminaQualThreshold} -p ivar.out
           samtools sort -o ${sampleName}.mapped.primertrimmed.sorted.bam ivar.out.bam
           samtools index ${sampleName}.mapped.primertrimmed.sorted.bam
@@ -148,7 +168,6 @@ process callVariants {
     tag { sampleName }
 
     publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "${sampleName}.variants.tsv", mode: 'copy'
-    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "${sampleName}.count.tsv", mode: 'copy'
 
     input:
     tuple(sampleName, path(bam), path(ref))
@@ -156,17 +175,20 @@ process callVariants {
     output:
     tuple sampleName, path("${sampleName}.variants.tsv"), emit: variants
     path "${sampleName}.count.tsv", emit: count
+    path "${sampleName}.variants.tsv", emit: contaminant
+    tuple sampleName, path("${sampleName}.variants.tsv"), path("${ref}"), path("${sampleName}.bed"), emit: contaminated
 
     script:
         """
         if [[ ! -s ${bam} ]]; then
-          touch ${sampleName}.variants.tsv ${sampleName}.count.tsv
+          touch ${sampleName}.variants.tsv ${sampleName}.count.tsv ${sampleName}.bed
         else
           samtools mpileup -A -d 0 --reference ${ref} -B -Q 0 ${bam} |\
           ivar variants -r ${ref} -m ${params.ivarMinDepth} -p ${sampleName}.variants -q ${params.ivarMinVariantQuality} -t ${params.ivarMinFreqThreshold}
           refName=\$(grep ">" ${ref} | tr -d ">")
           echo -e "\${refName}\\t10-20%\\t\$(awk 'BEGIN {bp=0} \$11>=0.1 && \$11<0.2 {bp+=1} {print bp}' "${sampleName}.variants.tsv" | tail -1)\\t${sampleName}" > "${sampleName}.count.tsv"
           echo -e "\${refName}\\t20-50%\\t\$(awk 'BEGIN {bp=0} \$11>=0.2 && \$11<0.5 {bp+=1} {print bp}' "${sampleName}.variants.tsv" | tail -1)\\t${sampleName}" >> "${sampleName}.count.tsv"
+          bedtools genomecov -ibam "${bam}" -bga > "${sampleName}.bed"
         fi
         """
 }
@@ -310,6 +332,74 @@ process reportAllCounts {
       """
 }
 
+
+process seekContaminant {
+
+    tag { sampleName }
+
+    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "raw/${sampleName}.tsv", mode: 'copy'
+    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "cov/${sampleName}.tsv", mode: 'copy'
+
+    when:
+      var.size() > 0
+
+    input:
+      tuple(sampleName, path(var), path(ref), path(bed))
+      file "vcf/*"
+    
+    output:
+      path "raw/${sampleName}.tsv", emit: rawtable
+      path "cov/${sampleName}.tsv", emit: covtable
+    
+    script:
+      """
+      mkdir -p raw/ cov/
+      for file in vcf/*.tsv; do
+      bn=\$(basename "\${file}")
+      if [[ \${bn} != ${var} && -s \${file} ]]; then
+          python2.7 ${params.scripts}/compare_vcf.py -r ${ref} -c \${file} -v ${var} -b ${bed} -d 100 -f 0.05 -m raw -o raw/${sampleName}.tsv
+          python2.7 ${params.scripts}/compare_vcf.py -r ${ref} -c \${file} -v ${var} -b ${bed} -d 100 -f 0.05 -m cov -o cov/${sampleName}.tsv
+      fi
+      done
+      """
+}
+
+process mergeContaminant {
+
+    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "contamination_raw.tsv", mode: 'copy'
+    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "contamination_cov.tsv", mode: 'copy'
+
+    input:
+      file 'raw/*'
+      file 'cov/*'
+    
+    output:
+      file "contamination_raw.tsv"
+      file "contamination_cov.tsv"
+    
+    script:
+      """
+      python2.7 ${params.scripts}/merge_tables.py raw/*.tsv > contamination_raw.tsv
+      python2.7 ${params.scripts}/merge_tables.py cov/*.tsv > contamination_cov.tsv
+      """
+}
+
+process mergePosControls {
+
+    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "posc.tsv", mode: 'copy'
+
+    input:
+      file 'posc/*'
+    
+    output:
+      file "posc.tsv"
+    
+    script:
+      """
+      python2.7 ${params.scripts}/merge_tables.py posc/*.tsv > posc.tsv
+      """
+}
+
 process makeSummary {
     /**
     * Make final summary of the run
@@ -326,5 +416,31 @@ process makeSummary {
     script:
       """
         Rscript ${params.scripts}/AI_analysis.R \$PWD/
+      """
+}
+
+process reportKmers {
+    /**
+    * Report kmers counts of each sample
+    */
+
+    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "kmers.tsv", mode: 'copy'
+
+    input:
+        file '*'
+
+    output:
+        file "kmers.tsv"
+
+    script:
+      """
+        for file in *.txt; do
+          echo -ne "\$(basename "\$file" | cut -d. -f1)\\t" >> kmers.tsv
+          if [[ -s \$file ]]; then
+            grep '>' \$file | wc -l >> kmers.tsv
+          else
+            echo '0' >> kmers.tsv
+          fi
+          done
       """
 }

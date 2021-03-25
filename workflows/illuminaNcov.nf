@@ -15,7 +15,11 @@ include {reportAllConsensus} from '../modules/illumina.nf'
 include {reportSampleCoverage} from '../modules/illumina.nf'
 include {reportAllCoverage} from '../modules/illumina.nf'
 include {reportAllCounts} from '../modules/illumina.nf'
+include {seekContaminant} from '../modules/illumina.nf'
+include {mergeContaminant} from '../modules/illumina.nf'
+include {mergePosControls} from '../modules/illumina.nf'
 include {makeSummary} from '../modules/illumina.nf'
+include {reportKmers} from '../modules/illumina.nf'
 include {cramToFastq} from '../modules/illumina.nf'
 
 include {makeQCCSV} from '../modules/qc.nf'
@@ -95,11 +99,19 @@ workflow sequenceAnalysis {
     main:
       readTrimming(ch_filePairs)
 
-      readMapping(readTrimming.out.combine(ch_preparedRef))
+      readMapping(readTrimming.out.combine(ch_preparedRef).combine(Channel.fromPath(params.posc)))
 
       trimPrimerSequences(readMapping.out.bam.combine(ch_bedFile))
 
+      reportKmers(trimPrimerSequences.out.kmers.collect())
+
       callVariants(trimPrimerSequences.out.ptrim.combine(ch_preparedRef.map{ it[0] })) 
+
+      seekContaminant(callVariants.out.contaminated, callVariants.out.contaminant.collect())
+
+      mergeContaminant(seekContaminant.out.rawtable.collect(), seekContaminant.out.covtable.collect())
+
+      mergePosControls(readMapping.out.posc.collect())
 
       //makeConsensus(trimPrimerSequences.out.ptrim)
 
