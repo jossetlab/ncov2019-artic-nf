@@ -107,7 +107,6 @@ process trimPrimerSequences {
     output:
     path "${sampleName}.mapped.bam.bai"
     path "${sampleName}.mapped.primertrimmed.sorted.bam.bai"
-    //path "${sampleName}.txt", emit: kmers
     tuple sampleName, path("${sampleName}.mapped.bam"), emit: mapped
     tuple sampleName, path("${sampleName}.mapped.primertrimmed.sorted.bam" ), emit: ptrim
 
@@ -121,7 +120,6 @@ process trimPrimerSequences {
     if ( params.cleanBamHeader )
         """
         if [[ ! -s ${bam} ]]; then
-          #touch ${sampleName}.mapped.bam ${sampleName}.mapped.bam.bai ${sampleName}.mapped.primertrimmed.sorted.bam ${sampleName}.mapped.primertrimmed.sorted.bam.bai ${sampleName}.txt
           touch ${sampleName}.mapped.bam ${sampleName}.mapped.bam.bai ${sampleName}.mapped.primertrimmed.sorted.bam ${sampleName}.mapped.primertrimmed.sorted.bam.bai
         else
           samtools reheader --no-PG  -c 'sed "s/${sampleName}/sample/g"' ${bam} | \
@@ -130,9 +128,6 @@ process trimPrimerSequences {
           mv sample.mapped.bam ${sampleName}.mapped.bam
         
           samtools index ${sampleName}.mapped.bam
-
-          #bedtools bamtofastq -i ${sampleName}.mapped.bam -fq ${sampleName}.fastq
-          #kmercountexact.sh in=${sampleName}.fastq out=${sampleName}.txt mincount=20 k=31
 
           ${ivarCmd} -i ${sampleName}.mapped.bam -b ${bedfile} -m ${params.illuminaKeepLen} -q ${params.illuminaQualThreshold} -p ivar.out
 
@@ -147,14 +142,10 @@ process trimPrimerSequences {
     else
         """
         if [[ ! -s ${bam} ]]; then
-          #touch ${sampleName}.mapped.bam ${sampleName}.mapped.bam.bai ${sampleName}.mapped.primertrimmed.sorted.bam ${sampleName}.mapped.primertrimmed.sorted.bam.bai ${sampleName}.txt
           touch ${sampleName}.mapped.bam ${sampleName}.mapped.bam.bai ${sampleName}.mapped.primertrimmed.sorted.bam ${sampleName}.mapped.primertrimmed.sorted.bam.bai
         else
           samtools view -F4 -o ${sampleName}.mapped.bam ${bam}
           samtools index ${sampleName}.mapped.bam
-
-          #bedtools bamtofastq -i ${sampleName}.mapped.bam -fq ${sampleName}.fastq
-          #kmercountexact.sh in=${sampleName}.fastq out=${sampleName}.txt mincount=20 k=31
 
           ${ivarCmd} -i ${sampleName}.mapped.bam -b ${bedfile} -m ${params.illuminaKeepLen} -q ${params.illuminaQualThreshold} -p ivar.out
           samtools sort -o ${sampleName}.mapped.primertrimmed.sorted.bam ivar.out.bam
@@ -418,27 +409,3 @@ process makeSummary {
         Rscript ${params.scripts}/AI_analysis.R \$PWD/
       """
 }
-/*
-process reportKmers {
-
-    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "kmers.tsv", mode: 'copy'
-
-    input:
-        file '*'
-
-    output:
-        file "kmers.tsv"
-
-    script:
-      """
-        for file in *.txt; do
-          echo -ne "\$(basename "\$file" | cut -d. -f1)\\t" >> kmers.tsv
-          if [[ -s \$file ]]; then
-            grep '>' \$file | wc -l >> kmers.tsv
-          else
-            echo '0' >> kmers.tsv
-          fi
-          done
-      """
-}
-*/

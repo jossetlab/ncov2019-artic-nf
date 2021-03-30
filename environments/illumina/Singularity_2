@@ -13,7 +13,7 @@ R -e 'library(devtools); install_version("seqinr", version = "4.2-5", repos="htt
 R -e 'library(devtools); install_version("stringr", version = "1.4.0", repos="https://cloud.r-project.org")'
 
 %files
-artic-ncov2019-illumina/opt/conda/envs/artic-ncov2019-illumina opt/conda/envs/artic-ncov2019-illumina
+artic-ncov2019-illumina/opt/conda/envs/artic-ncov2019-illumina opt/conda/envs/
 
 %environment
 export PATH=/opt/conda/envs/artic-ncov2019-illumina/bin:$PATH

@@ -19,7 +19,6 @@ include {seekContaminant} from '../modules/illumina.nf'
 include {mergeContaminant} from '../modules/illumina.nf'
 include {mergePosControls} from '../modules/illumina.nf'
 include {makeSummary} from '../modules/illumina.nf'
-//include {reportKmers} from '../modules/illumina.nf'
 include {cramToFastq} from '../modules/illumina.nf'
 
 include {makeQCCSV} from '../modules/qc.nf'
@@ -102,8 +101,6 @@ workflow sequenceAnalysis {
       readMapping(readTrimming.out.combine(ch_preparedRef).combine(Channel.fromPath(params.posc)))
 
       trimPrimerSequences(readMapping.out.bam.combine(ch_bedFile))
-
-      //reportKmers(trimPrimerSequences.out.kmers.collect())
 
       callVariants(trimPrimerSequences.out.ptrim.combine(ch_preparedRef.map{ it[0] })) 
 
