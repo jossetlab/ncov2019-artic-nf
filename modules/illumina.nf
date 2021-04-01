@@ -328,28 +328,24 @@ process seekContaminant {
 
     tag { sampleName }
 
-    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "raw/${sampleName}.tsv", mode: 'copy'
-    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "cov/${sampleName}.tsv", mode: 'copy'
-
     when:
       var.size() > 0
 
     input:
-      tuple(sampleName, path(var), path(ref), path(bed))
+      tuple(sampleName, path(var), path(ref), path(bed), path(pool), mode)
       file "vcf/*"
     
     output:
-      path "raw/${sampleName}.tsv", emit: rawtable
-      path "cov/${sampleName}.tsv", emit: covtable
+      path "${poolname}_${mode}_${sampleName}.tsv"
     
     script:
+    poolname = (pool =~ /([0-9a-zA-Z_\-]+)(.+)/)[0][1]
       """
-      mkdir -p raw/ cov/
+      mkdir -p ${poolname}/${mode}/
       for file in vcf/*.tsv; do
       bn=\$(basename "\${file}")
       if [[ \${bn} != ${var} && -s \${file} ]]; then
-          python2.7 ${params.scripts}/compare_vcf.py -r ${ref} -c \${file} -v ${var} -b ${bed} -d 100 -f 0.05 -m raw -o raw/${sampleName}.tsv
-          python2.7 ${params.scripts}/compare_vcf.py -r ${ref} -c \${file} -v ${var} -b ${bed} -d 100 -f 0.05 -m cov -o cov/${sampleName}.tsv
+          python2.7 ${params.scripts}/compare_vcf.py -r ${ref} -c \${file} -v ${var} -b ${bed} -d 100 -f 0.05 -m ${mode} -R ${poolname}.bed -o ${poolname}_${mode}_${sampleName}.tsv
       fi
       done
       """
@@ -357,21 +353,23 @@ process seekContaminant {
 
 process mergeContaminant {
 
-    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "contamination_raw.tsv", mode: 'copy'
-    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "contamination_cov.tsv", mode: 'copy'
+    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "contamination_${poolname}_${mode}.tsv", mode: 'copy'
 
     input:
-      file 'raw/*'
-      file 'cov/*'
+      file("*")
+      tuple(path(pool), mode)
     
     output:
-      file "contamination_raw.tsv"
-      file "contamination_cov.tsv"
+      file "contamination_${poolname}_${mode}.tsv"
     
     script:
+    poolname = (pool =~ /([0-9a-zA-Z_\-]+)(.+)/)[0][1]
       """
-      python2.7 ${params.scripts}/merge_tables.py raw/*.tsv > contamination_raw.tsv
-      python2.7 ${params.scripts}/merge_tables.py cov/*.tsv > contamination_cov.tsv
+      mkdir -p ${poolname}/${mode}/
+      for file in ${poolname}_${mode}_*.tsv; do
+        mv \${file} "${poolname}/${mode}/\${file##${poolname}_${mode}_}"
+      done
+      python2.7 ${params.scripts}/merge_tables.py ${poolname}/${mode}/*.tsv > contamination_${poolname}_${mode}.tsv
       """
 }
 

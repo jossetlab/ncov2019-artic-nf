@@ -13,6 +13,7 @@ def main(argv):
     global oup
     global mode
     global bed
+    global region
     global min_depth
     global min_freq
     ref = ''
@@ -21,10 +22,11 @@ def main(argv):
     oup = ''
     mode = ''
     bed = ''
+    region = ''
     min_depth = 20
     min_freq = 0.01
     try:
-        opts, args = getopt.getopt(argv, 'hr:c:v:o:m:b:d:f:', ['help', 'ref', 'con', 'var', 'output', 'mode', 'bed', 'min_depth', 'min_freq'])
+        opts, args = getopt.getopt(argv, 'hr:c:v:o:m:b:R:d:f:', ['help', 'ref', 'con', 'var', 'output', 'mode', 'bed', 'region', 'min_depth', 'min_freq'])
         for opt, arg in opts:
             if opt in ('-h', '--help'):
                 usage()
@@ -41,6 +43,8 @@ def main(argv):
                 mode = arg
             elif opt in ('-b', '--bed'):
                 bed = arg
+            elif opt in ('-R', '--region'):
+                region = arg
             elif opt in ('-d', '--min_depth'):
                 min_depth = int(arg)
             elif opt in ('-f', '--min_freq'):
@@ -55,7 +59,7 @@ def main(argv):
         sys.exit(2)
 
 def usage():
-    print('usage: ' + sys.argv[0] + ' -h --help -r --ref [fasta] --con [vcf] --var [vcf] -o --output [tsv] -m --mode [raw,cov] -b --bed [bed] -d --min_depth [int] -f --min_freq [float]')
+    print('usage: ' + sys.argv[0] + ' -h --help -r --ref [fasta] --con [vcf] --var [vcf] -o --output [tsv] -m --mode [raw,cov] -b --bed [bed] -R --region [bed] -d --min_depth [int] -f --min_freq [float]')
 
 if __name__ == '__main__':
     main(sys.argv[1:])
@@ -81,6 +85,15 @@ depth = []
 for i in range(len(bga)):
     depth.append([int(bga[i][3]) for x in range(int(bga[i][1]),int(bga[i][2]))])
 depth = flatten(depth)
+
+if region != '':
+    treg = [x.split('\t') for x in open(region, 'r').read().replace('\r\n','\n').rstrip('\n').split('\n')]
+    reg = []
+    for i in range(len(treg)):
+        reg.append([int(x) for x in range(int(treg[i][1]),int(treg[i][2]))])
+    reg = flatten(reg)
+else:
+    reg = []
 
 #indexs = open(con, 'r').read().split('\n')[count_commented(con)-1:count_commented(con)].split('\t')
 
@@ -143,7 +156,7 @@ for i in range(len(vas_chrom)):
         vas_af.append(1-float(vas_af[i]))
 
 for i in range(len(cons_chrom)):
-    if depth[cons_pos[i]] >= min_depth and float(cons_af[i]) >= min_freq:
+    if (cons_pos[i] in reg or reg == []) and depth[cons_pos[i]] >= min_depth and float(cons_af[i]) >= min_freq:
         if float(cons_af[i]) >= 0.5:
             if cons_pos[i] in vas_pos:
                 vas_index = vas_pos.index(cons_pos[i])
@@ -157,7 +170,7 @@ for i in range(len(cons_chrom)):
                 exp.append([cons_pos[i], cons_alt[i], "ref1"])
 
 for i in range(len(vas_chrom)):
-    if depth[vas_pos[i]] >= min_depth and float(vas_af[i]) >= min_freq:
+    if (vas_pos[i] in reg or reg == []) and depth[vas_pos[i]] >= min_depth and float(vas_af[i]) >= min_freq:
         if float(vas_af[i]) < 0.5:
             if vas_pos[i] in cons_pos:
                 cons_index = cons_pos.index(vas_pos[i])
@@ -182,12 +195,17 @@ w = open(oup, 'a+')
 exp = sorted(exp, key=lambda i: i[0])
 print(exp)
 print (temp)
+
 if mode == "cov":
     if expected > 0:
         w.write(con.split("/")[-1].rstrip('.' + con.split('.')[1]) + "\t" + str(round(float(common)/float(expected), 2)) + "\n")
     else:
         w.write(con.split("/")[-1].rstrip('.' + con.split('.')[1]) + "\t0.0\n")
-else:
+elif mode == "common":
+    w.write(con.split("/")[-1].rstrip('.' + con.split('.')[1]) + "\t" + str(common) + "\n")
+elif mode == "expected":
+    w.write(con.split("/")[-1].rstrip('.' + con.split('.')[1]) + "\t" + str(expected) + "\n")
+elif mode == "raw":
     w.write(con.split("/")[-1].rstrip('.' + con.split('.')[1]) + "\t" + str(common) + "//" + str(expected) + "\n")
 w.close()
 print (str(common) + "//" + str(expected))

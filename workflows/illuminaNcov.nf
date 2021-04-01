@@ -104,9 +104,9 @@ workflow sequenceAnalysis {
 
       callVariants(trimPrimerSequences.out.ptrim.combine(ch_preparedRef.map{ it[0] })) 
 
-      seekContaminant(callVariants.out.contaminated, callVariants.out.contaminant.collect())
+      seekContaminant(callVariants.out.contaminated.combine(Channel.fromPath(params.pool)).combine(Channel.from(params.mode)), callVariants.out.contaminant.collect())
 
-      mergeContaminant(seekContaminant.out.rawtable.collect(), seekContaminant.out.covtable.collect())
+      mergeContaminant(seekContaminant.out.collect(), Channel.fromPath(params.pool).combine(Channel.from(params.mode)))
 
       mergePosControls(readMapping.out.posc.collect())
 
