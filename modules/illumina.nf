@@ -332,20 +332,19 @@ process seekContaminant {
       var.size() > 0
 
     input:
-      tuple(sampleName, path(var), path(ref), path(bed), path(pool), mode)
+      tuple(sampleName, path(var), path(ref), path(bed), path(pool))
       file "vcf/*"
     
     output:
-      path "${poolname}_${mode}_${sampleName}.tsv"
+      tuple(path("raw_${poolname}_${sampleName}.tsv"), path("cov_${poolname}_${sampleName}.tsv"), path("common_${poolname}_${sampleName}.tsv"), path("expected_${poolname}_${sampleName}.tsv"))
     
     script:
     poolname = (pool =~ /([0-9a-zA-Z_\-]+)(.+)/)[0][1]
       """
-      mkdir -p ${poolname}/${mode}/
       for file in vcf/*.tsv; do
       bn=\$(basename "\${file}")
       if [[ \${bn} != ${var} && -s \${file} ]]; then
-          python2.7 ${params.scripts}/compare_vcf.py -r ${ref} -c \${file} -v ${var} -b ${bed} -d 100 -f 0.05 -m ${mode} -R ${poolname}.bed -o ${poolname}_${mode}_${sampleName}.tsv
+          python2.7 ${params.scripts}/compare_vcf.py -r ${ref} -c \${file} -v ${var} -b ${bed} -d 100 -f 0.05 -m raw,cov,common,expected -R ${poolname}.bed
       fi
       done
       """
@@ -353,23 +352,23 @@ process seekContaminant {
 
 process mergeContaminant {
 
-    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "contamination_${poolname}_${mode}.tsv", mode: 'copy'
+    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "contamination_${mode}_${poolname}.tsv", mode: 'copy'
 
     input:
       file("*")
       tuple(path(pool), mode)
     
     output:
-      file "contamination_${poolname}_${mode}.tsv"
+      file "contamination_${mode}_${poolname}.tsv"
     
     script:
     poolname = (pool =~ /([0-9a-zA-Z_\-]+)(.+)/)[0][1]
       """
-      mkdir -p ${poolname}/${mode}/
-      for file in ${poolname}_${mode}_*.tsv; do
-        mv \${file} "${poolname}/${mode}/\${file##${poolname}_${mode}_}"
+      mkdir -p ${mode}/${poolname}/
+      for file in ${mode}_${poolname}_*.tsv; do
+        mv \${file} "${mode}/${poolname}/\${file##${mode}_${poolname}_}"
       done
-      python2.7 ${params.scripts}/merge_tables.py ${poolname}/${mode}/*.tsv > contamination_${poolname}_${mode}.tsv
+      python2.7 ${params.scripts}/merge_tables.py ${mode}/${poolname}/*.tsv > contamination_${mode}_${poolname}.tsv
       """
 }
 

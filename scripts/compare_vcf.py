@@ -20,7 +20,7 @@ def main(argv):
     var = ''
     con = ''
     oup = ''
-    mode = ''
+    mode = ['raw']
     bed = ''
     region = ''
     min_depth = 20
@@ -40,7 +40,9 @@ def main(argv):
             elif opt in ('-o', '--output'):
                 oup = arg
             elif opt in ('-m', '--mode'):
-                mode = arg
+                mode = []
+                for i in range(len(arg.split(','))):
+                    mode.append(arg.split(',')[i])
             elif opt in ('-b', '--bed'):
                 bed = arg
             elif opt in ('-R', '--region'):
@@ -53,13 +55,13 @@ def main(argv):
             usage()
             sys.exit()
         if oup == '':
-            oup = var.split("/")[-1].rstrip('.' + var.split('.')[-1]) + '_' + con.split("/")[-1].rstrip('.' + con.split('.')[-1]) + '.tsv'
+            oup = region.split("/")[-1].split(".")[0] + '_' + var.split("/")[-1].split(".")[0] + '.tsv'
     except getopt.GetoptError:
         usage()
         sys.exit(2)
 
 def usage():
-    print('usage: ' + sys.argv[0] + ' -h --help -r --ref [fasta] --con [vcf] --var [vcf] -o --output [tsv] -m --mode [raw,cov] -b --bed [bed] -R --region [bed] -d --min_depth [int] -f --min_freq [float]')
+    print('usage: ' + sys.argv[0] + ' -h --help -r --ref [fasta] --con [vcf] --var [vcf] -o --output [tsv] -m --mode [raw,cov,common,expected] -b --bed [bed] -R --region [bed] -d --min_depth [int] -f --min_freq [float]')
 
 if __name__ == '__main__':
     main(sys.argv[1:])
@@ -191,21 +193,27 @@ for i in range(len(vas_chrom)):
                 exp.append([vas_pos[i], vas_alt[i], "ref3"])
 
 
-w = open(oup, 'a+')
 exp = sorted(exp, key=lambda i: i[0])
 print(exp)
 print (temp)
-
-if mode == "cov":
+if "cov" in mode:
+    w = open("cov_" + oup, 'a+')
     if expected > 0:
-        w.write(con.split("/")[-1].rstrip('.' + con.split('.')[1]) + "\t" + str(round(float(common)/float(expected), 2)) + "\n")
+        w.write(con.split("/")[-1].split(".")[0] + "\t" + str(round(float(common)/float(expected), 2)) + "\n")
     else:
-        w.write(con.split("/")[-1].rstrip('.' + con.split('.')[1]) + "\t0.0\n")
-elif mode == "common":
-    w.write(con.split("/")[-1].rstrip('.' + con.split('.')[1]) + "\t" + str(common) + "\n")
-elif mode == "expected":
-    w.write(con.split("/")[-1].rstrip('.' + con.split('.')[1]) + "\t" + str(expected) + "\n")
-elif mode == "raw":
-    w.write(con.split("/")[-1].rstrip('.' + con.split('.')[1]) + "\t" + str(common) + "//" + str(expected) + "\n")
-w.close()
+        w.write(con.split("/")[-1].split(".")[0] + "\t0.0\n")
+    w.close()
+if "common" in mode:
+    w = open("common_" + oup, 'a+')
+    w.write(con.split("/")[-1].split(".")[0] + "\t" + str(common) + "\n")
+    w.close()
+if "expected" in mode:
+    w = open("expected_" + oup, 'a+')
+    w.write(con.split("/")[-1].split(".")[0] + "\t" + str(expected) + "\n")
+    w.close()
+if "raw" in mode:
+    w = open("raw_" + oup, 'a+')
+    w.write(con.split("/")[-1].split(".")[0] + "\t" + str(common) + "//" + str(expected) + "\n")
+    w.close()
+
 print (str(common) + "//" + str(expected))
