@@ -122,7 +122,7 @@ workflow sequenceAnalysis {
       
       reportAllCounts(callVariants.out.count.collect())
 
-      makeSummary(reportAllConsensus.out.cons.combine(reportAllConsensus.out.trimcons).combine(reportAllCoverage.out).combine(reportAllCounts.out))
+      makeSummary(reportAllConsensus.out.cons.combine(reportAllConsensus.out.trimcons).combine(reportAllCoverage.out).combine(reportAllCounts.out).combine(mergePosControls.out).combine(mergeContaminant.out.filter{ it.toString() =~ /contamination_common_poolt.tsv/ }))
 
       makeQCCSV(trimPrimerSequences.out.ptrim.join(makeConsensus.out, by: 0)
                                    .combine(ch_preparedRef.map{ it[0] }))

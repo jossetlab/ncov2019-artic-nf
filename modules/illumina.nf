@@ -396,7 +396,7 @@ process makeSummary {
     publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "summary.csv", mode: 'copy'
 
     input:
-        tuple(path(consensus), path(trimcons), path(coverage), path(counts))
+        tuple(path(consensus), path(trimcons), path(coverage), path(counts), path(posc), path(conta))
 
     output:
         path("summary.csv")

@@ -40,9 +40,25 @@ Nseqtrim = unlist(lapply(trimcons, function(l) length(grep("n",l))))
 N_check_results<-as.data.frame(cbind(seqnames,length_N_int,length_N_tot,lengthseq,Nseqtrim))
 N_check_results$percCOV<-(as.numeric(as.character(N_check_results$lengthseq))-as.numeric(as.character(N_check_results$length_N_tot)))/29903*100
 
-alldata<-merge(mean_cov,N_check_results,by.x = "sample",by.y = "seqnames")
-alldata<-merge(alldata,var_1020,by = "sample",)
-alldata<-merge(alldata,var_2050,by = "sample",)
+posc_table<-read.table(paste0(rep_res,"posc.tsv"),header=T)
+posc_table$SAMPLEID <- NULL
+posc <- data.frame(sample = character(0), hasposc = character(0), stringsAsFactors=FALSE)
+for (i in colnames(posc_table)) {posc[nrow(posc)+1,]<-c(gsub("\\.", "-", i), any(posc_table[,i] >= 0.90))}
+posc$hasposc<-gsub("FALSE", "FAILED", posc$hasposc)
+posc$hasposc<-gsub("TRUE", "OK", posc$hasposc)
+
+conta_table<-read.table(paste0(rep_res,"contamination_common_poolt.tsv"),header=T)
+conta_table$SAMPLEID <- NULL
+conta <- data.frame(sample = character(0), hasdp = character(0), stringsAsFactors=FALSE)
+for (i in colnames(conta_table)) {conta[nrow(conta)+1,]<-c(gsub("\\.", "-", i), any(conta_table[,i] >= 5))}
+conta$hasdp<-gsub("FALSE", "NO", conta$hasdp)
+conta$hasdp<-gsub("TRUE", "HASDP", conta$hasdp)
+
+alldata<-merge(mean_cov,N_check_results,by.x = "sample",by.y = "seqnames", all.x=TRUE)
+alldata<-merge(alldata,var_1020,by = "sample", all.x=TRUE)
+alldata<-merge(alldata,var_2050,by = "sample", all.x=TRUE)
+alldata<-merge(alldata,posc,by = "sample", all.x=TRUE)
+alldata<-merge(alldata,conta,by = "sample", all.x=TRUE)
 
 #samplesheet<-read.table(paste0(samplesheet_path),header=T,sep=",")
 
