@@ -23,22 +23,23 @@ apt-get update
 mkdir -p /usr/share/man/man1
 dpkg --configure -a
 apt-get install -f
-apt-get install -y git procps r-base=3.5.2-1 libxml2-dev libssl-dev curl libcurl4-openssl-dev python2.7
+apt-get install -y wget git procps r-base=3.5.2-1 libxml2-dev libssl-dev curl libcurl4-openssl-dev python2.7
 apt-get clean -y
-apt install -y wget gnupg software-properties-common
-wget -qO - https://adoptopenjdk.jfrog.io/adoptopenjdk/api/gpg/key/public | apt-key add -
-add-apt-repository --yes https://adoptopenjdk.jfrog.io/adoptopenjdk/deb/
-apt update -y
-apt install adoptopenjdk-8-hotspot -y
-curl -s https://get.nextflow.io | bash
-mv nextflow /usr/bin
 R -e 'install.packages("devtools", repos="https://cloud.r-project.org")'
 R -e 'library(devtools); install_version("seqinr", version = "4.2-5", repos="https://cloud.r-project.org")'
 R -e 'library(devtools); install_version("stringr", version = "1.4.0", repos="https://cloud.r-project.org")'
+R -e 'library(devtools); install_version("ggplot2", version = "3.3.3", repos="https://cloud.r-project.org")'
+R -e 'library(devtools); install_version("reshape", version = "0.8.8", repos="https://cloud.r-project.org")'
+wget http://opengene.org/MutScan/mutscan
+chmod 777 ./mutscan
+mv mutscan /opt/conda/envs/artic-ncov2019-illumina/bin
+export PATH=/opt/conda/envs/artic-ncov2019-illumina/bin:$PATH
+apt-get install -y npm
+npm install --global @neherlab/nextclade
 
 %files from condabuild
   /opt/conda/envs/artic-ncov2019-illumina /opt/conda/envs/artic-ncov2019-illumina
 
 %environment
-export PATH=/usr/lib/jvm/adoptopenjdk-8-hotspot-amd64/bin:/opt/conda/envs/artic-ncov2019-illumina/bin:$PATH
-export JAVA_HOME=/usr/lib/jvm/adoptopenjdk-8-hotspot-amd64/bin/java
+export PATH=/opt/conda/envs/artic-ncov2019-illumina/bin:$PATH
+export JAVA_HOME=/opt/conda/envs/artic-ncov2019-illumina

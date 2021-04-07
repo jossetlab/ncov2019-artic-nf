@@ -5,6 +5,7 @@ nextflow.preview.dsl = 2
 
 // import modules
 include {articDownloadScheme } from '../modules/artic.nf' 
+include {scanMutations} from '../modules/illumina.nf' 
 include {readTrimming} from '../modules/illumina.nf' 
 include {indexReference} from '../modules/illumina.nf'
 include {readMapping} from '../modules/illumina.nf' 
@@ -19,6 +20,8 @@ include {seekContaminant} from '../modules/illumina.nf'
 include {mergeContaminant} from '../modules/illumina.nf'
 include {mergePosControls} from '../modules/illumina.nf'
 include {makeSummary} from '../modules/illumina.nf'
+include {nextcladeReport} from '../modules/illumina.nf'
+include {makeValidationReport} from '../modules/illumina.nf'
 include {cramToFastq} from '../modules/illumina.nf'
 
 include {makeQCCSV} from '../modules/qc.nf'
@@ -96,6 +99,8 @@ workflow sequenceAnalysis {
       ch_bedFile
 
     main:
+      scanMutations(ch_filePairs.combine(Channel.fromPath(params.mutscan)))
+
       readTrimming(ch_filePairs)
 
       readMapping(readTrimming.out.combine(ch_preparedRef).combine(Channel.fromPath(params.posc)))
@@ -123,6 +128,10 @@ workflow sequenceAnalysis {
       reportAllCounts(callVariants.out.count.collect())
 
       makeSummary(reportAllConsensus.out.cons.combine(reportAllConsensus.out.trimcons).combine(reportAllCoverage.out).combine(reportAllCounts.out).combine(mergePosControls.out).combine(mergeContaminant.out.filter{ it.toString() =~ /contamination_common_poolt.tsv/ }))
+
+      nextcladeReport(reportAllConsensus.out.cons)
+
+      makeValidationReport(makeSummary.out.combine(nextcladeReport.out).combine(Channel.fromPath(params.matricemut)))
 
       makeQCCSV(trimPrimerSequences.out.ptrim.join(makeConsensus.out, by: 0)
                                    .combine(ch_preparedRef.map{ it[0] }))

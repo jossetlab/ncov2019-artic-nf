@@ -1,9 +1,39 @@
+process scanMutations {
+
+    // Count unique reads corresponding to variants of interest
+
+    tag { sampleName }
+
+    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "${sampleName}_mutscan.tsv", mode: 'copy'
+    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "${sampleName}_mutscan.html", mode: 'copy'
+
+    cpus 2
+
+    input:
+    tuple(sampleName, path(forward), path(reverse), path(mutscan))
+
+    output:
+    path("${sampleName}_mutscan.tsv")
+
+    script:
+    """
+    if [[ ! -s ${forward} ]]; then
+      #exit 0
+      touch ${sampleName}_mutscan.tsv ${sampleName}_mutscan.html
+    else
+      mutscan -1 ${forward} -2 ${reverse} -m ${mutscan} -j ${sampleName}_mutscan.json -h ${sampleName}_mutscan.html -s
+      for mut in \$(grep -v "#" ${mutscan} | awk -F "," '{ print \$1 }' ); do
+        echo -e "\${mut}\\t\$(cat ${sampleName}_mutscan.json | sed 's/\\\\/\\//g' | python3 -c "import sys, json; print(len(set([x['seq'] for x in json.load(sys.stdin)['mutations']['\${mut}']['reads']])))")" >> ${sampleName}_mutscan.tsv
+      done
+    fi
+    """
+}
+
 process readTrimming {
-    /**
-    * Trims paired fastq using trim_galore (https://github.com/FelixKrueger/TrimGalore)
-    * @input tuple(sampleName, path(forward), path(reverse))
-    * @output trimgalore_out tuple(sampleName, path("*_val_1.fq.gz"), path("*_val_2.fq.gz"))
-    */
+
+    // Trims paired fastq using trim_galore (https://github.com/FelixKrueger/TrimGalore)
+    // @input tuple(sampleName, path(forward), path(reverse))
+    // @output trimgalore_out tuple(sampleName, path("*_val_1.fq.gz"), path("*_val_2.fq.gz"))
 
     tag { sampleName }
 
@@ -29,9 +59,8 @@ process readTrimming {
 }
 
 process indexReference {
-    /**
-    * Indexes reference fasta file in the scheme repo using bwa.
-    */
+
+    // Indexes reference fasta file in the scheme repo using bwa.
 
     tag { ref }
 
@@ -49,12 +78,11 @@ process indexReference {
 }
 
 process readMapping {
-    /**
-    * Maps trimmed paired fastq using BWA (http://bio-bwa.sourceforge.net/)
-    * Uses samtools to convert to BAM, sort and index sorted BAM (http://www.htslib.org/doc/samtools.html)
-    * @input 
-    * @output 
-    */
+
+    // Maps trimmed paired fastq using BWA (http://bio-bwa.sourceforge.net/)
+    // Uses samtools to convert to BAM, sort and index sorted BAM (http://www.htslib.org/doc/samtools.html)
+    // @input
+    // @output
 
     tag { sampleName }
 
@@ -212,12 +240,11 @@ process makeConsensus {
 }
 
 process cramToFastq {
-    /**
-    * Converts CRAM to fastq (http://bio-bwa.sourceforge.net/)
-    * Uses samtools to convert to CRAM, to FastQ (http://www.htslib.org/doc/samtools.html)
-    * @input
-    * @output
-    */
+
+    // Converts CRAM to fastq (http://bio-bwa.sourceforge.net/)
+    // Uses samtools to convert to CRAM, to FastQ (http://www.htslib.org/doc/samtools.html)
+    // @input
+    // @output
 
     input:
         tuple sampleName, file(cram)
@@ -234,9 +261,8 @@ process cramToFastq {
 }
 
 process reportAllConsensus {
-    /**
-    * Concatenate consensus of all samples
-    */
+
+    // Concatenate consensus of all samples
 
     publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "all_consensus.fasta", mode: 'copy'
     publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "all_trimcons.fasta", mode: 'copy'
@@ -257,9 +283,8 @@ process reportAllConsensus {
 }
 
 process reportSampleCoverage {
-    /**
-    * Report coverage for each sample
-    */
+
+    // Report coverage for each sample
 
     tag { sampleName }
 
@@ -286,9 +311,8 @@ process reportSampleCoverage {
 }
 
 process reportAllCoverage {
-    /**
-    * Report coverage summary of the run
-    */
+
+    // Report coverage summary of the run
 
     publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "all_cov.cov", mode: 'copy'
 
@@ -305,9 +329,8 @@ process reportAllCoverage {
 }
 
 process reportAllCounts {
-    /**
-    * Report counts summary of the run
-    */
+
+    // Report counts summary of the run
 
     publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "all_counts.tsv", mode: 'copy'
 
@@ -389,9 +412,8 @@ process mergePosControls {
 }
 
 process makeSummary {
-    /**
-    * Make final summary of the run
-    */
+
+    //Make final summary of the run
 
     publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "summary.csv", mode: 'copy'
 
@@ -404,5 +426,41 @@ process makeSummary {
     script:
       """
         Rscript ${params.scripts}/AI_analysis.R \$PWD/
+      """
+}
+
+process nextcladeReport {
+
+    // Make nextclade report of the run
+
+    publishDir "${params.outdir}/ncovIllumina_sequenceAnalysis_makeSummary", pattern: "nextclade_report.tsv", mode: 'copy'
+
+    input:
+        file 'all_consensus.fasta'
+
+    output:
+        path("nextclade_report.tsv")
+
+    script:
+      """
+        nextclade -i all_consensus.fasta -t nextclade_report.tsv
+      """
+}
+
+process makeValidationReport {
+
+    // Make a report for technical validation of the run
+
+    publishDir "${params.outdir}/ncovIllumina_sequenceAnalysis_makeSummary", pattern: "validation_report.csv", mode: 'copy'
+
+    input:
+        tuple(path(summary), path(nextclade), path(matricemut))
+
+    output:
+        path("validation_report.csv")
+
+    script:
+      """
+        Rscript ${params.scripts}/techval.R ${summary} ${nextclade} ${matricemut} validation_report.csv
       """
 }
