@@ -10,10 +10,11 @@ process scanMutations {
     cpus 2
 
     input:
-    tuple(sampleName, path(forward), path(reverse), path(mutscan))
+    tuple(sampleName, path(forward), path(reverse), path(mutscan), path(ref), path("*"))
 
     output:
     path("${sampleName}_mutscan.tsv")
+    path("${sampleName}_mutscan.html")
 
     script:
     """
@@ -21,9 +22,10 @@ process scanMutations {
       #exit 0
       touch ${sampleName}_mutscan.tsv ${sampleName}_mutscan.html
     else
-      mutscan -1 ${forward} -2 ${reverse} -m ${mutscan} -j ${sampleName}_mutscan.json -h ${sampleName}_mutscan.html -s
-      for mut in \$(grep -v "#" ${mutscan} | awk -F "," '{ print \$1 }' ); do
-        echo -e "\${mut}\\t\$(cat ${sampleName}_mutscan.json | sed 's/\\\\/\\//g' | python3 -c "import sys, json; print(len(set([x['seq'] for x in json.load(sys.stdin)['mutations']['\${mut}']['reads']])))")" >> ${sampleName}_mutscan.tsv
+      mutscan -1 ${forward} -2 ${reverse} -m ${mutscan} -r ${ref} -j ${sampleName}_mutscan.json -h ${sampleName}_mutscan.html -s
+      for mut in \$(grep -v "#" ${mutscan} | awk -F "\\t" '{ print \$3 }' ); do
+        mutscan_name=\$(grep "\${mut}" ${mutscan} | awk -F "\\t" '{ print \$9 }' )
+        echo -e "\${mut}\\t\$(cat ${sampleName}_mutscan.json | sed 's/\\\\/\\//g' | python3 -c "import sys, json; print(len(set([x['seq'] for x in json.load(sys.stdin)['mutations']['\${mutscan_name}']['reads']])))")" >> ${sampleName}_mutscan.tsv
       done
     fi
     """

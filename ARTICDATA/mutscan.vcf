@@ -1,0 +1,15 @@
+##fileformat=VCFv4.1
+##source=lyonhcl
+##reference=nCoV-2019.reference
+##fileDate=20210408
+##comment="Missing nucleotide details indicate ambiguity during curation process"
+##comment="REF and ALT sequences are both forward strand
+##INFO=<ID=GENE,Number=1,Type=String,Description="Gene name">
+##INFO=<ID=STRAND,Number=1,Type=String,Description="Gene strand">
+##INFO=<ID=CDS,Number=1,Type=String,Description="CDS annotation">
+##INFO=<ID=AA,Number=1,Type=String,Description="Peptide annotation">
+##INFO=<ID=CNT,Number=1,Type=Integer,Description="How many samples have this mutation">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	MUTSCAN
+MN908947.3	22917	MN908947.3_MutL452R|CTG>CGG	T	G	.	.	GENE=S;STRAND=+;CDS=c.1355T>G;AA=p.L452R;CNT=1	S_p.L452R_c.1355T>G_MN908947.3_22917_T>G
+MN908947.3	23012	MN908947.3_MutE484K|GAA>AAA	G	A	.	.	GENE=S;STRAND=+;CDS=c.1450A>C;AA=p.E484K;CNT=1	S_p.E484K_c.1450A>C_MN908947.3_23012_G>A
+MN908947.3	23063	MN908947.3_MutN501Y|AAT>TAT	A	T	.	.	GENE=S;STRAND=+;CDS=c.1501A>C;AA=p.N501Y;CNT=1	S_p.N501Y_c.1501A>C_MN908947.3_23063_A>T

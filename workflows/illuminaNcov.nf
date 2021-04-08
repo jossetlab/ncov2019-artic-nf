@@ -99,7 +99,7 @@ workflow sequenceAnalysis {
       ch_bedFile
 
     main:
-      scanMutations(ch_filePairs.combine(Channel.fromPath(params.mutscan)))
+      scanMutations(ch_filePairs.combine(Channel.fromPath(params.mutscan)).combine(ch_preparedRef))
 
       readTrimming(ch_filePairs)
 
