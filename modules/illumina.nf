@@ -427,7 +427,7 @@ process makeSummary {
 
     script:
       """
-        Rscript ${params.scripts}/AI_analysis.R \$PWD/
+        Rscript ${params.scripts}/AI_analysis.R \$PWD/ ${params.prefix}
       """
 }
 

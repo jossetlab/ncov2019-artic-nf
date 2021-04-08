@@ -8,7 +8,7 @@ library(stringr)
 
 argv <- commandArgs(TRUE)
 rep_res<-as.character(argv[1])
-#samplesheet_path<-as.character(argv[2])
+run_data<-as.character(argv[2])
 
 cov_table<-read.table(paste0(rep_res,"all_cov.cov"),header=F)
 colnames(cov_table)<-c("reference","position","coverage","sample")
@@ -59,6 +59,7 @@ alldata<-merge(alldata,var_1020,by = "sample", all.x=TRUE)
 alldata<-merge(alldata,var_2050,by = "sample", all.x=TRUE)
 alldata<-merge(alldata,posc,by = "sample", all.x=TRUE)
 alldata<-merge(alldata,conta,by = "sample", all.x=TRUE)
+alldata$RUN<-run_data
 
 #samplesheet<-read.table(paste0(samplesheet_path),header=T,sep=",")
 
