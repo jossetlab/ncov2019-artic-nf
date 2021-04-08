@@ -449,18 +449,20 @@ process nextcladeReport {
 
 process makeValidationReport {
 
-    // Make a report for technical validation of the run
+    // Make reports for technical validation of the run
 
     publishDir "${params.outdir}/ncovIllumina_sequenceAnalysis_makeSummary", pattern: "validation_report.csv", mode: 'copy'
+    publishDir "${params.outdir}/ncovIllumina_sequenceAnalysis_makeSummary", pattern: "export_fastfinder.csv", mode: 'copy'
 
     input:
         tuple(path(summary), path(nextclade), path(matricemut))
 
     output:
         path("validation_report.csv")
+        path("export_fastfinder.csv")
 
     script:
       """
-        Rscript ${params.scripts}/techval.R ${summary} ${nextclade} ${matricemut} validation_report.csv
+        Rscript ${params.scripts}/techval.R ${summary} ${nextclade} ${matricemut} validation_report.csv export_fastfinder.csv
       """
 }

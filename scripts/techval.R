@@ -7,7 +7,8 @@ argv <- commandArgs(TRUE)
 BILANfile<-as.character(argv[1])
 NEXTCLADEfile<-as.character(argv[2])
 MATRICEMUTfile<-as.character(argv[3])
-OUTFILE<-as.character(argv[4])
+VALIDATION_REPORT<-as.character(argv[4])
+EXPORT_FASTFINDER<-as.character(argv[5])
 
 ####################################
 ##SCRIPT
@@ -96,11 +97,11 @@ clades<-colnames(matricemut)
 
 nextstrain_valid$spikesubcheck<-sapply(nextstrain_valid$sample,function(x) ifelse(grepl(paste0("(?=.*",matricemut[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==x]][!is.na(matricemut[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==x]])],")",collapse=""),nextstrain_valid$aaSubstitutions[nextstrain_valid$sample==x],perl=T),"ok","no"))
 
-nextstrain_valid$commentspikesubcheck<-sapply(nextstrain_valid$sample,function(y) ifelse(nextstrain_valid$spikesubcheck[nextstrain_valid$sample==y]=="ok","",ifelse(is.na(nextstrain_valid$aaSubstitutions[nextstrain_valid$sample==y]),"",paste("Mutation(s) ",paste(matricemut[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==y]][!is.na(matricemut[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==y]])][sapply(matricemut[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==y]][!is.na(matricemut[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==y]])],function(x) str_detect(nextstrain_valid$aaSubstitutions[nextstrain_valid$sample==y],x)==FALSE)],collapse=",")," non pr�sente(s).",sep=""))))
+nextstrain_valid$commentspikesubcheck<-sapply(nextstrain_valid$sample,function(y) ifelse(nextstrain_valid$spikesubcheck[nextstrain_valid$sample==y]=="ok","",ifelse(is.na(nextstrain_valid$aaSubstitutions[nextstrain_valid$sample==y]),"",paste("Mutation(s) ",paste(matricemut[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==y]][!is.na(matricemut[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==y]])][sapply(matricemut[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==y]][!is.na(matricemut[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==y]])],function(x) str_detect(nextstrain_valid$aaSubstitutions[nextstrain_valid$sample==y],x)==FALSE)],collapse=",")," non presente(s).",sep=""))))
 
 nextstrain_valid$spikedelcheck<-sapply(nextstrain_valid$sample,function(x) ifelse(grepl(paste0("(?=.*",matricemutdel[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==x]][!is.na(matricemutdel[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==x]])],")",collapse=""),nextstrain_valid$aaDeletions[nextstrain_valid$sample==x],perl=T),"ok","no"))
 
-nextstrain_valid$commentspikedelcheck<-sapply(nextstrain_valid$sample,function(y) ifelse(nextstrain_valid$spikedelcheck[nextstrain_valid$sample==y]=="ok","",ifelse(is.na(nextstrain_valid$aaDeletions[nextstrain_valid$sample==y]),"",paste("D�l�tion(s) ",paste(matricemutdel[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==y]][!is.na(matricemutdel[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==y]])][sapply(matricemutdel[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==y]][!is.na(matricemutdel[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==y]])],function(x) str_detect(nextstrain_valid$aaDeletions[nextstrain_valid$sample==y],x)==FALSE)],collapse=",")," non pr�sente(s).",sep=""))))
+nextstrain_valid$commentspikedelcheck<-sapply(nextstrain_valid$sample,function(y) ifelse(nextstrain_valid$spikedelcheck[nextstrain_valid$sample==y]=="ok","",ifelse(is.na(nextstrain_valid$aaDeletions[nextstrain_valid$sample==y]),"",paste("Deletion(s) ",paste(matricemutdel[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==y]][!is.na(matricemutdel[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==y]])][sapply(matricemutdel[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==y]][!is.na(matricemutdel[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==y]])],function(x) str_detect(nextstrain_valid$aaDeletions[nextstrain_valid$sample==y],x)==FALSE)],collapse=",")," non presente(s).",sep=""))))
 
 
 #Commentaires missings sur positions clefs de la matrice
@@ -125,7 +126,7 @@ nextstrain_valid$commentextsub<-sapply(nextstrain_valid$sample, function(a)
     which(FALSE==str_detect(
       paste(matricemut[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==a]][!is.na(matricemut[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==a]])],collapse=""),
       str_c(grep("(3[3-9][3-9]|4[0-9][0-9]|5[0-2][0-7])",gsub(",*","",str_split(nextstrain_valid$aaSubstitutions[nextstrain_valid$sample==a],"S:")[[1]][-1]),value=T)))),
-    function(z)grep("(3[3-9][3-9]|4[0-9][0-9]|5[0-2][0-7])",gsub(",*","",str_split(nextstrain_valid$aaSubstitutions[nextstrain_valid$sample==a],"S:")[[1]][-1]),value=T)[z])),paste("Substitution(s) ",paste(sapply(which(FALSE==str_detect(paste(matricemut[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==a]][!is.na(matricemut[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==a]])],collapse=""),str_c(grep("(3[3-9][3-9]|4[0-9][0-9]|5[0-2][0-7])",gsub(",*","",str_split(nextstrain_valid$aaSubstitutions[nextstrain_valid$sample==a],"S:")[[1]][-1]),value=T)))),function(g)grep("(3[3-9][3-9]|4[0-9][0-9]|5[0-2][0-7])",gsub(",*","",str_split(nextstrain_valid$aaSubstitutions[nextstrain_valid$sample==a],"S:")[[1]][-1]),value=T)[g]),collapse=",")," pr�sente(s) sur le RBD de la spike.",sep=""),""))
+    function(z)grep("(3[3-9][3-9]|4[0-9][0-9]|5[0-2][0-7])",gsub(",*","",str_split(nextstrain_valid$aaSubstitutions[nextstrain_valid$sample==a],"S:")[[1]][-1]),value=T)[z])),paste("Substitution(s) ",paste(sapply(which(FALSE==str_detect(paste(matricemut[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==a]][!is.na(matricemut[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==a]])],collapse=""),str_c(grep("(3[3-9][3-9]|4[0-9][0-9]|5[0-2][0-7])",gsub(",*","",str_split(nextstrain_valid$aaSubstitutions[nextstrain_valid$sample==a],"S:")[[1]][-1]),value=T)))),function(g)grep("(3[3-9][3-9]|4[0-9][0-9]|5[0-2][0-7])",gsub(",*","",str_split(nextstrain_valid$aaSubstitutions[nextstrain_valid$sample==a],"S:")[[1]][-1]),value=T)[g]),collapse=",")," presente(s) sur le RBD de la spike.",sep=""),""))
 
 
 nextstrain_valid$commentextdel<-sapply(nextstrain_valid$sample, function(a) 
@@ -133,7 +134,7 @@ nextstrain_valid$commentextdel<-sapply(nextstrain_valid$sample, function(a)
     which(FALSE==str_detect(
       paste(matricemutdel[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==a]][!is.na(matricemutdel[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==a]])],collapse=""),
       str_c(grep("([1-9]|[1-9][0-9]|[1-9][0-9][0-9]|1[0-9][0-9][0-9])",gsub(",*","",str_split(nextstrain_valid$aaDeletions[nextstrain_valid$sample==a],"S:")[[1]][-1]),value=T)))),
-    function(z)grep("([1-9]|[1-9][0-9]|[1-9][0-9][0-9]|1[0-9][0-9][0-9])",gsub(",*","",str_split(nextstrain_valid$aaDeletions[nextstrain_valid$sample==a],"S:")[[1]][-1]),value=T)[z])),paste("Deletion(s) ",paste(sapply(which(FALSE==str_detect(paste(matricemutdel[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==a]][!is.na(matricemutdel[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==a]])],collapse=""),str_c(grep("([1-9]|[1-9][0-9]|[1-9][0-9][0-9]|1[0-9][0-9][0-9])",gsub(",*","",str_split(nextstrain_valid$aaDeletions[nextstrain_valid$sample==a],"S:")[[1]][-1]),value=T)))),function(g)grep("([1-9]|[1-9][0-9]|[1-9][0-9][0-9]|1[0-9][0-9][0-9])",gsub(",*","",str_split(nextstrain_valid$aaDeletions[nextstrain_valid$sample==a],"S:")[[1]][-1]),value=T)[g]),collapse=",")," pr�sente(s) sur la spike.",sep=""),""))
+    function(z)grep("([1-9]|[1-9][0-9]|[1-9][0-9][0-9]|1[0-9][0-9][0-9])",gsub(",*","",str_split(nextstrain_valid$aaDeletions[nextstrain_valid$sample==a],"S:")[[1]][-1]),value=T)[z])),paste("Deletion(s) ",paste(sapply(which(FALSE==str_detect(paste(matricemutdel[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==a]][!is.na(matricemutdel[,nextstrain_valid$Target_1_cq[nextstrain_valid$sample==a]])],collapse=""),str_c(grep("([1-9]|[1-9][0-9]|[1-9][0-9][0-9]|1[0-9][0-9][0-9])",gsub(",*","",str_split(nextstrain_valid$aaDeletions[nextstrain_valid$sample==a],"S:")[[1]][-1]),value=T)))),function(g)grep("([1-9]|[1-9][0-9]|[1-9][0-9][0-9]|1[0-9][0-9][0-9])",gsub(",*","",str_split(nextstrain_valid$aaDeletions[nextstrain_valid$sample==a],"S:")[[1]][-1]),value=T)[g]),collapse=",")," presente(s) sur la spike.",sep=""),""))
 
 
 
@@ -142,13 +143,13 @@ nextstrain_valid$commentextdel<-sapply(nextstrain_valid$sample, function(a)
 #nextstrain_valid$avis<-sapply(nextstrain_valid$sample, function(a) ifelse(nextstrain_valid$spikecheck[nextstrain_valid$sample==a]=="ok"&nextstrain_valid$commentspikecheck[nextstrain_valid$sample==a]==""&nextstrain_valid$missingsspike[nextstrain_valid$sample==a]=="Mutation(s)    non couverte(s)"&nextstrain_valid$commentmissingsattendus[nextstrain_valid$sample==a]=="ok","VALIDATION ok","AVIS BIO"))
 nextstrain_valid$avis<-sapply(nextstrain_valid$sample, function(a) ifelse(nextstrain_valid$spikesubcheck[nextstrain_valid$sample==a]=="ok"&nextstrain_valid$spikedelcheck[nextstrain_valid$sample==a]=="ok"&nextstrain_valid$commentspikesubcheck[nextstrain_valid$sample==a]=="","VALIDATION ok","AVIS BIO"))
 
-#nextstrain_valid$finalcomm<-sapply(1:nrow(nextstrain_valid),function (x) paste(nextstrain_valid$commentextsub[x],nextstrain_valid$commentextdel[x],ifelse(nextstrain_valid$missingsspiketot[x]=="Position(s) d'interet suivante(s) non couvertes sur la spike :    .","",nextstrain_valid$missingsspiketot[x]),ifelse(is.na(nextstrain_valid$totalInsertions),"",paste("Positions d'insertions nucl�otidiques pr�sentes sur la s�quence consensus :",nextstrain_valid$totalInsertions,sep=""),sep="")))
-nextstrain_valid$finalcomm<-sapply(1:nrow(nextstrain_valid),function (x) paste(nextstrain_valid$commentextsub[x],nextstrain_valid$commentextdel[x],ifelse(nextstrain_valid$missingsspiketot[x]=="Position(s) d'interet suivante(s) non couvertes sur la spike :    .","",nextstrain_valid$missingsspiketot[x]),ifelse(nextstrain_valid$insertions[x]=="","",paste("Positions d'insertions nucl�otidiques pr�sentes sur la s�quence consensus : ",nextstrain_valid$insertions[x],sep="")),sep=""))
+#nextstrain_valid$finalcomm<-sapply(1:nrow(nextstrain_valid),function (x) paste(nextstrain_valid$commentextsub[x],nextstrain_valid$commentextdel[x],ifelse(nextstrain_valid$missingsspiketot[x]=="Position(s) d'interet suivante(s) non couvertes sur la spike :    .","",nextstrain_valid$missingsspiketot[x]),ifelse(is.na(nextstrain_valid$totalInsertions),"",paste("Positions d'insertions nucleotidiques presentes sur la sequence consensus :",nextstrain_valid$totalInsertions,sep=""),sep="")))
+nextstrain_valid$finalcomm<-sapply(1:nrow(nextstrain_valid),function (x) paste(nextstrain_valid$commentextsub[x],nextstrain_valid$commentextdel[x],ifelse(nextstrain_valid$missingsspiketot[x]=="Position(s) d'interet suivante(s) non couvertes sur la spike :    .","",nextstrain_valid$missingsspiketot[x]),ifelse(nextstrain_valid$insertions[x]=="","",paste("Positions d'insertions nucleotidiques presentes sur la sequence consensus : ",nextstrain_valid$insertions[x],sep="")),sep=""))
 nextstrain_valid$finalcomm<-gsub("\\.","\\.\n",nextstrain_valid$finalcomm)
 
 
 ###
-write.csv2(nextstrain_valid,"validation.csv")
+write.csv2(nextstrain_valid, VALIDATION_REPORT)
 ###
 
 nextstrain_valid$CLADE_GLIMS = nextstrain_valid$clade
@@ -172,5 +173,5 @@ data.frame("Sample ID"=nextstrain_valid$sample, "Instrument ID(s)"="NB552333", "
 
 colnames(Export)=c("Sample ID", "Instrument ID(s)", "Analysis authorized by","Assay","Target_1_cq")
 
-write.csv(Export, OUTFILE, quote=FALSE, row.names = FALSE)
+write.csv(Export, EXPORT_FASTFINDER, quote=FALSE, row.names = FALSE)
 
