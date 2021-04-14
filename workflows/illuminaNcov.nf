@@ -22,6 +22,7 @@ include {mergePosControls} from '../modules/illumina.nf'
 include {makeSummary} from '../modules/illumina.nf'
 include {nextcladeReport} from '../modules/illumina.nf'
 include {makeValidationReport} from '../modules/illumina.nf'
+include {makePhylogeneticTree} from '../modules/illumina.nf'
 include {cramToFastq} from '../modules/illumina.nf'
 
 include {makeQCCSV} from '../modules/qc.nf'
@@ -132,6 +133,8 @@ workflow sequenceAnalysis {
       nextcladeReport(reportAllConsensus.out.cons)
 
       makeValidationReport(makeSummary.out.combine(nextcladeReport.out).combine(Channel.fromPath(params.matricemut)))
+
+      makePhylogeneticTree(makeSummary.out.combine(reportAllConsensus.out.cons))
 
       makeQCCSV(trimPrimerSequences.out.ptrim.join(makeConsensus.out, by: 0)
                                    .combine(ch_preparedRef.map{ it[0] }))

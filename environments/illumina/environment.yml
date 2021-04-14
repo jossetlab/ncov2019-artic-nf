@@ -5,9 +5,9 @@ channels:
   - defaults
 dependencies:
   - python=3
-  - python-isal = 0.6.1
+  - python-isal=0.6.1
   - biopython=1.74
-  - libxcb
+  - libxcb=1.14
   - matplotlib=3.3.3
   - pandas=0.23.0=py36_1
   - bwa=0.7.17=pl5.22.0_2
@@ -23,3 +23,6 @@ dependencies:
   - bbmap=38.90
   - bc=1.07.1
   - nodejs=15.14.0
+  - iqtree=2.1.2
+  - fasttree=2.1.10
+  - mafft=7.475

@@ -468,3 +468,23 @@ process makeValidationReport {
         Rscript ${params.scripts}/techval.R ${summary} ${nextclade} ${matricemut} validation_report.csv export_fastfinder.csv
       """
 }
+
+process makePhylogeneticTree {
+
+    // Make a phylogenetic tree from the sequences generated
+
+    publishDir "${params.outdir}/ncovIllumina_sequenceAnalysis_makeSummary", pattern: "validated.nwk", mode: 'copy'
+
+    input:
+        tuple(path(summary), path(consensus))
+
+    output:
+        path("validated.nwk")
+
+    script:
+      """
+        for sample in \$(sed -e "1d" ${summary} | tr ',' '.' | awk -F ";" '{ if(\$7 >= "90") {print \$1 } }'); do python3 -c "import sys; print('>' + ''.join([x for x in open('${consensus}', 'r').read().rstrip('\\n').split('>')[1:] if x.split('\\n')[0]=='\${sample}']).rstrip('\\n'))" >> validated.fasta; done;
+        mafft --auto validated.fasta > aligned.fasta
+        fasttree -nt aligned.fasta > validated.nwk
+      """
+}
