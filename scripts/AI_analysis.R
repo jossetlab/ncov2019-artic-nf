@@ -40,17 +40,17 @@ Nseqtrim = unlist(lapply(trimcons, function(l) length(grep("n",l))))
 N_check_results<-as.data.frame(cbind(seqnames,length_N_int,length_N_tot,lengthseq,Nseqtrim))
 N_check_results$percCOV<-(as.numeric(as.character(N_check_results$lengthseq))-as.numeric(as.character(N_check_results$length_N_tot)))/29903*100
 
-posc_table<-read.table(paste0(rep_res,"posc.tsv"),header=T)
-posc_table$SAMPLEID <- NULL
+posc_header<-read.table(paste0(rep_res,"posc.tsv"), nrows=1, header=F, stringsAsFactors=FALSE)
+posc_table<-read.table(paste0(rep_res,"posc.tsv"), skip=1, header=F)
 posc <- data.frame(sample = character(0), hasposc = character(0), stringsAsFactors=FALSE)
-for (i in colnames(posc_table)) {posc[nrow(posc)+1,]<-c(gsub("\\.", "-", i), any(posc_table[,i] >= 0.90))}
+for (i in 2:length(posc_header)) {posc[nrow(posc)+1,]<-c(posc_header[i], any(posc_table[,i] >= 0.90))}
 posc$hasposc<-gsub("FALSE", "FAILED", posc$hasposc)
 posc$hasposc<-gsub("TRUE", "OK", posc$hasposc)
 
-conta_table<-read.table(paste0(rep_res,"contamination_common_poolt.tsv"),header=T)
-conta_table$SAMPLEID <- NULL
+conta_header<-read.table(paste0(rep_res,"contamination_common_poolt.tsv"), nrows=1, header=F, stringsAsFactors=FALSE)
+conta_table<-read.table(paste0(rep_res,"contamination_common_poolt.tsv"), skip=1, header=F)
 conta <- data.frame(sample = character(0), hasdp = character(0), stringsAsFactors=FALSE)
-for (i in colnames(conta_table)) {conta[nrow(conta)+1,]<-c(gsub("\\.", "-", i), any(conta_table[,i] >= 5))}
+for (i in 2:length(conta_header)) {conta[nrow(conta)+1,]<-c(conta_header[i], any(conta_table[,i] >= 5))}
 conta$hasdp<-gsub("FALSE", "NO", conta$hasdp)
 conta$hasdp<-gsub("TRUE", "HASDP", conta$hasdp)
 
