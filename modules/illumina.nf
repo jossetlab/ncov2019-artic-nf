@@ -207,8 +207,8 @@ process callVariants {
           samtools mpileup -A -d 0 --reference ${ref} -B -Q 0 ${bam} |\
           ivar variants -r ${ref} -m ${params.ivarMinDepth} -p ${sampleName}.variants -q ${params.ivarMinVariantQuality} -t ${params.ivarMinFreqThreshold}
           refName=\$(grep ">" ${ref} | tr -d ">")
-          echo -e "\${refName}\\t10-20%\\t\$(awk 'BEGIN {bp=0} \$11>=0.1 && \$11<0.2 {bp+=1} {print bp}' "${sampleName}.variants.tsv" | tail -1)\\t${sampleName}" > "${sampleName}.count.tsv"
-          echo -e "\${refName}\\t20-50%\\t\$(awk 'BEGIN {bp=0} \$11>=0.2 && \$11<0.5 {bp+=1} {print bp}' "${sampleName}.variants.tsv" | tail -1)\\t${sampleName}" >> "${sampleName}.count.tsv"
+          echo -e "\${refName}\\t10-20%\\t\$(awk 'BEGIN {bp=0} \$11>=0.1 && \$11<0.2 && \$14=="TRUE" {bp+=1} {print bp}' "${sampleName}.variants.tsv" | tail -1)\\t${sampleName}" > "${sampleName}.count.tsv"
+          echo -e "\${refName}\\t20-50%\\t\$(awk 'BEGIN {bp=0} \$11>=0.2 && \$11<0.5 && \$14=="TRUE" {bp+=1} {print bp}' "${sampleName}.variants.tsv" | tail -1)\\t${sampleName}" >> "${sampleName}.count.tsv"
           bedtools genomecov -ibam "${bam}" -bga > "${sampleName}.bed"
         fi
         """
