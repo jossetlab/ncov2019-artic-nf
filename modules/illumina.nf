@@ -4,7 +4,7 @@ process scanMutations {
 
     tag { sampleName }
 
-    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "${sampleName}_mutscan.tsv", mode: 'copy'
+    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "${sampleName}.tsv", mode: 'copy'
     publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "${sampleName}_mutscan.html", mode: 'copy'
 
     cpus 2
@@ -13,19 +13,19 @@ process scanMutations {
     tuple(sampleName, path(forward), path(reverse), path(mutscan), path(ref), path("*"))
 
     output:
-    path("${sampleName}_mutscan.tsv")
+    path("${sampleName}.tsv") ,emit: mut
     path("${sampleName}_mutscan.html")
 
     script:
     """
     if [[ ! -s ${forward} ]]; then
       #exit 0
-      touch ${sampleName}_mutscan.tsv ${sampleName}_mutscan.html
+      touch ${sampleName}.tsv ${sampleName}_mutscan.html
     else
       mutscan -1 ${forward} -2 ${reverse} -m ${mutscan} -r ${ref} -j ${sampleName}_mutscan.json -h ${sampleName}_mutscan.html -s
       for mut in \$(grep -v "#" ${mutscan} | awk -F "\\t" '{ print \$3 }' ); do
         mutscan_name=\$(grep "\${mut}" ${mutscan} | awk -F "\\t" '{ print \$9 }' )
-        echo -e "\${mut}\\t\$(cat ${sampleName}_mutscan.json | sed 's/\\\\/\\//g' | python3 -c "import sys, json; print(len(set([x['seq'] for x in json.load(sys.stdin)['mutations']['\${mutscan_name}']['reads']])))")" >> ${sampleName}_mutscan.tsv
+        echo -e "\${mut}\\t\$(cat ${sampleName}_mutscan.json | sed 's/\\\\/\\//g' | python3 -c "import sys, json; print(len(set([x['seq'] for x in json.load(sys.stdin)['mutations']['\${mutscan_name}']['reads']])))")" >> ${sampleName}.tsv
       done
     fi
     """
@@ -375,6 +375,22 @@ process seekContaminant {
       """
 }
 
+process mergeMutscan {
+
+    publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "mutscan.tsv", mode: 'copy'
+
+    input:
+      file 'scanMutations/*'
+    
+    output:
+      file "mutscan.tsv"
+    
+    script:
+      """
+      python2.7 ${params.scripts}/merge_tables.py scanMutations/* > mutscan.tsv
+      """
+}
+
 process mergeContaminant {
 
     publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "contamination_${mode}_${poolname}.tsv", mode: 'copy'
@@ -420,7 +436,7 @@ process makeSummary {
     publishDir "${params.outdir}/${task.process.replaceAll(":","_")}", pattern: "summary.csv", mode: 'copy'
 
     input:
-        tuple(path(consensus), path(trimcons), path(coverage), path(counts), path(posc), path(conta))
+        tuple(path(consensus), path(trimcons), path(coverage), path(counts), path(posc), path(conta),path(mut))
 
     output:
         path("summary.csv")

@@ -19,6 +19,9 @@ include {reportAllCounts} from '../modules/illumina.nf'
 include {seekContaminant} from '../modules/illumina.nf'
 include {mergeContaminant} from '../modules/illumina.nf'
 include {mergePosControls} from '../modules/illumina.nf'
+
+include {mergeMutscan} from '../modules/illumina.nf'
+
 include {makeSummary} from '../modules/illumina.nf'
 include {nextcladeReport} from '../modules/illumina.nf'
 include {makeValidationReport} from '../modules/illumina.nf'
@@ -114,6 +117,8 @@ workflow sequenceAnalysis {
 
       mergeContaminant(seekContaminant.out.flatten().collect(), Channel.fromPath(params.pool).combine(Channel.from(params.mode)))
 
+      mergeMutscan(scanMutations.out.mut.collect())
+      
       mergePosControls(readMapping.out.posc.collect())
 
       //makeConsensus(trimPrimerSequences.out.ptrim)
@@ -128,7 +133,7 @@ workflow sequenceAnalysis {
       
       reportAllCounts(callVariants.out.count.collect())
 
-      makeSummary(reportAllConsensus.out.cons.combine(reportAllConsensus.out.trimcons).combine(reportAllCoverage.out).combine(reportAllCounts.out).combine(mergePosControls.out).combine(mergeContaminant.out.filter{ it.toString() =~ /contamination_common_poolt.tsv/ }))
+      makeSummary(reportAllConsensus.out.cons.combine(reportAllConsensus.out.trimcons).combine(reportAllCoverage.out).combine(reportAllCounts.out).combine(mergePosControls.out).combine(mergeContaminant.out.filter{ it.toString() =~ /contamination_common_poolt.tsv/ }).combine(mergeMutscan.out))
 
       nextcladeReport(reportAllConsensus.out.cons)
 

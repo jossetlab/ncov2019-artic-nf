@@ -54,11 +54,36 @@ for (i in 2:length(conta_header)) {conta[nrow(conta)+1,]<-c(conta_header[i], any
 conta$hasdp<-gsub("FALSE", "NO", conta$hasdp)
 conta$hasdp<-gsub("TRUE", "HASDP", conta$hasdp)
 
+mutscan_table<-read.delim(paste0(rep_res,"mutscan.tsv"), header=F)
+mutscan_table$V1<-str_replace(mutscan_table$V1,"MN908947.3_Mut","")
+mutscan_table$V1<-str_replace(mutscan_table$V1,"\\|","_")
+mutscan_table$V1<-str_replace(mutscan_table$V1,">","_")
+mutscan_table$V1<-sapply(mutscan_table$V1,function(x) str_split(x,"_")[[1]][[1]])
+t_mutscan<-as.data.frame(t(mutscan_table))
+cols<-mutscan_table$V1
+cols[1]<-"sample"
+t_mutscan<-t_mutscan[-1,]
+rownames(t_mutscan)<-NULL
+for (i in 1:length(colnames(t_mutscan))) t_mutscan[,i]<-sapply(t_mutscan[,i],function(x) if(nchar(as.character(x))==0) return("0") else return(as.character(x)))
+colnames(t_mutscan)<-cols
+t_mutscan$hasmut<-""
+colmut<-subset(colnames(t_mutscan),!(colnames(t_mutscan) %in% c("sample","hasmut")))
+for (col in colmut) {
+  t_mutscan$hasmut<-ifelse(as.numeric(t_mutscan[,which(colnames(t_mutscan)==col)])>0,
+                           paste0(t_mutscan$hasmut,col,","),
+                           t_mutscan$hasmut)
+}
+t_mutscan$hasmut<-ifelse(nchar(t_mutscan$hasmut)>0,str_sub(t_mutscan$hasmut,start = 1,end = -2),"NO")
+t_mutscan<-t_mutscan[,c("sample","hasmut")]
+
+head(t_mutscan)
+
 alldata<-merge(mean_cov,N_check_results,by.x = "sample",by.y = "seqnames", all.x=TRUE)
 alldata<-merge(alldata,var_1020,by = "sample", all.x=TRUE)
 alldata<-merge(alldata,var_2050,by = "sample", all.x=TRUE)
 alldata<-merge(alldata,posc,by = "sample", all.x=TRUE)
 alldata<-merge(alldata,conta,by = "sample", all.x=TRUE)
+alldata<-merge(alldata,t_mutscan,by = "sample" , all.x=TRUE)
 alldata$RUN<-run_data
 
 #samplesheet<-read.table(paste0(samplesheet_path),header=T,sep=",")
