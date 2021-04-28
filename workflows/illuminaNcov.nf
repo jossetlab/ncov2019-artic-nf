@@ -139,7 +139,7 @@ workflow sequenceAnalysis {
 
       makeValidationReport(makeSummary.out.combine(nextcladeReport.out).combine(Channel.fromPath(params.matricemut)))
 
-      makePhylogeneticTree(makeSummary.out.combine(reportAllConsensus.out.cons))
+      makePhylogeneticTree(makeSummary.out.combine(reportAllConsensus.out.cons).combine(Channel.fromPath(params.cladesref)))
 
       makeQCCSV(trimPrimerSequences.out.ptrim.join(makeConsensus.out, by: 0)
                                    .combine(ch_preparedRef.map{ it[0] }))
